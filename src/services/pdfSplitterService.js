@@ -205,6 +205,7 @@ async function locateSinglePdfPages({ pdfFile, items, settings, reportProgress }
     apiKey,
     modelName,
     providerType: runtimeSettings.providerType,
+    requestOptions: runtimeSettings.requestOptions,
     pdfBase64
   }, (message) => reportProgress(message, -1));
 

@@ -73,3 +73,41 @@ test('resolveSettingsWithPlatformDefaults 只在字段缺失时回退平台默�
   assert.equal(manual.modelName, 'custom-model');
   assert.equal(manual.providerType, 'openai');
 });
+
+test('resolvePlatformDefaultRuntimeConfig 支持 DeepSeek 平台默认与高级请求参数', () => {
+  const runtimeConfig = resolvePlatformDefaultRuntimeConfig({
+    VITE_PLATFORM_DEFAULT_VENDOR: 'deepseek',
+    VITE_PLATFORM_DEFAULT_MODEL: 'deepseek-v4-pro',
+    VITE_PLATFORM_DEFAULT_BASE_URL: 'https://api.deepseek.com',
+    VITE_PLATFORM_DEFAULT_API_KEY: 'deepseek-key',
+    VITE_PLATFORM_DEFAULT_REQUEST_OPTIONS: JSON.stringify({
+      max_tokens: 8192,
+      reasoning: { enabled: true }
+    })
+  });
+
+  assert.equal(runtimeConfig?.providerType, 'deepseek');
+  assert.equal(runtimeConfig?.apiKey, 'deepseek-key');
+  assert.equal(runtimeConfig?.apiUrl, 'https://api.deepseek.com');
+  assert.equal(runtimeConfig?.modelName, 'deepseek-v4-pro');
+  assert.deepEqual(runtimeConfig?.requestOptions, {
+    max_tokens: 8192,
+    reasoning: { enabled: true }
+  });
+});
+
+test('buildAllEnvDefaultPresets 支持 DeepSeek 厂商默认预设', () => {
+  const presets = buildAllEnvDefaultPresets({
+    VITE_DEFAULT_DEEPSEEK_API_KEY: 'deepseek-key',
+    VITE_DEFAULT_DEEPSEEK_BASE_URL: 'https://api.deepseek.com',
+    VITE_DEFAULT_DEEPSEEK_MODEL: 'deepseek-v4-flash',
+    VITE_DEFAULT_DEEPSEEK_REQUEST_OPTIONS: '{"max_tokens":4096}'
+  });
+
+  assert.equal(presets.length, 1);
+  assert.equal(presets[0].id, 'preset_deepseek_default');
+  assert.equal(presets[0].vendorKey, 'deepseek');
+  assert.equal(presets[0].transportType, 'openai_compatible');
+  assert.equal(presets[0].modelName, 'deepseek-v4-flash');
+  assert.deepEqual(presets[0].requestOptions, { max_tokens: 4096 });
+});

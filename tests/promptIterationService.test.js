@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   clipPromptIterationHistory,
+  removePromptIterationHistoryAt,
   normalizePromptIterationDraft,
   supportsPromptIterationPdfProvider,
   runPromptIteration
@@ -74,6 +75,43 @@ test('runPromptIteration 非 JSON 回复会标记未解析出 JSON', async () =>
 
   assert.equal(result.results[0].jsonParseStatus, 'not_found');
   assert.equal(result.results[0].summaryText, '未解析出 JSON');
+});
+
+test('runPromptIteration 会按文件上报可展示的运行进度', async () => {
+  const progressMessages = [];
+
+  const result = await runPromptIteration({
+    name: '创新项目',
+    systemPrompt: '只返回 JSON',
+    userPrompt: '提取',
+    files: [
+      { id: 'a', file: { name: 'A.pdf' }, pageSpec: '1' },
+      { id: 'b', file: { name: 'B.pdf' }, pageSpec: '' }
+    ],
+    llmSettings: {
+      apiUrl: 'https://example.com',
+      apiKey: 'k',
+      modelName: 'gemini-2.5-pro',
+      providerType: 'gemini'
+    },
+    onProgress: (entry) => progressMessages.push(entry)
+  }, {
+    extractPdfPages: async () => ({ pdfData: new Uint8Array([1]), pageOffset: 1 }),
+    fileToBase64: async (file) => `FULL:${file.name}`,
+    uint8ArrayToBase64: () => 'BASE64',
+    callLLMWithRetry: async () => ({
+      text: '{}',
+      usage: { input_tokens: 1, output_tokens: 1 }
+    }),
+    now: () => 1000
+  });
+
+  assert.equal(result.summary.successCount, 2);
+  assert.equal(progressMessages[0].percentage, 0);
+  assert.equal(progressMessages.at(-1).percentage, 100);
+  assert(progressMessages.some((entry) => entry.message.includes('正在截取页码')));
+  assert(progressMessages.some((entry) => entry.message.includes('正在载入全文 PDF')));
+  assert(progressMessages.some((entry) => entry.message.includes('Prompt 快速验证完成')));
 });
 
 test('runPromptIteration 单文件失败不阻断其他文件', async () => {
@@ -203,6 +241,24 @@ test('clipPromptIterationHistory 只保留最近 20 条历史', () => {
 
   assert.equal(clipped.length, 20);
   assert.deepEqual(clipped[0], { id: 25 });
+});
+
+test('removePromptIterationHistoryAt 按索引删除历史记录且不修改原数组', () => {
+  const history = [
+    { createdAt: 1000, name: 'A' },
+    { createdAt: 2000, name: 'B' },
+    { createdAt: 3000, name: 'C' }
+  ];
+
+  const nextHistory = removePromptIterationHistoryAt(history, 1);
+
+  assert.deepEqual(nextHistory, [
+    { createdAt: 1000, name: 'A' },
+    { createdAt: 3000, name: 'C' }
+  ]);
+  assert.equal(history.length, 3);
+  assert.deepEqual(removePromptIterationHistoryAt(history, -1), history);
+  assert.notEqual(removePromptIterationHistoryAt(history, -1), history);
 });
 
 test('normalizePromptIterationDraft 用默认值补齐草稿', () => {

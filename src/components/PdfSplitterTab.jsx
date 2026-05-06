@@ -266,13 +266,7 @@ export function PdfSplitterTab({
 
   return (
     <section className="glass-panel main-panel compressor-simple">
-      <div className="section-heading workspace-heading">
-        <div>
-          <h2 className="section-title">
-            <IconFileSearch size={20} stroke={1.8} />
-            <span>Chunking测试</span>
-          </h2>
-        </div>
+      <div className="dataprep-subpage-toolbar">
         <PagePresetQuickSwitch
           presets={modelPresets}
           preset={selectedPreset}

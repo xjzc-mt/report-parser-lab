@@ -255,6 +255,7 @@ async function callStrategyStage({
     apiKey: llmSettings.apiKey,
     modelName: llmSettings.modelName,
     providerType: llmSettings.providerType,
+    requestOptions: llmSettings.requestOptions,
     pdfInputs
   }, null, maxRetries);
 
@@ -386,6 +387,7 @@ export async function validateOptimizationCandidate(params) {
       apiKey: params.llmSettings.apiKey,
       modelName: params.llmSettings.modelName,
       providerType: params.llmSettings.providerType,
+      requestOptions: params.llmSettings.requestOptions,
       pdfBase64: pdfInput.pdfBase64
     }, null, params.maxRetries ?? 3);
 

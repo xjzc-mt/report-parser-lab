@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { ActionIcon, Badge, Button, TextInput } from '@mantine/core';
-import { IconFileTypePdf, IconTrash, IconUpload } from '@tabler/icons-react';
+import { ActionIcon, Badge, Button, TextInput, Tooltip } from '@mantine/core';
+import { IconHelpCircle, IconTrash, IconUpload } from '@tabler/icons-react';
 import { parsePromptIterationPageSpec } from '../../utils/promptIterationModel.js';
 
 function getFileIdentity(file) {
@@ -32,7 +32,19 @@ function isPdfFile(file) {
   return file?.type === 'application/pdf' || file?.name?.toLowerCase().endsWith('.pdf');
 }
 
-export function PromptIterationFileList({ draft, onDraftChange }) {
+function PageSpecHelp() {
+  return (
+    <Tooltip
+      label="留空表示全文；支持单页、区间、多页组合，例如 12、12-15、12,18、12-15,18。"
+      multiline
+      w={260}
+    >
+      <IconHelpCircle size={15} stroke={1.8} className="prompt-iteration-page-help" />
+    </Tooltip>
+  );
+}
+
+export function PromptIterationFileList({ draft, onDraftChange, compact = false }) {
   const inputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -113,52 +125,39 @@ export function PromptIterationFileList({ draft, onDraftChange }) {
     updatePageSpec(item.id, parsed.normalized);
   };
 
-  return (
-    <div className="panel-block prompt-iteration-files">
-      <div className="prompt-iteration-section-head">
-        <div>
-          <h3 className="prompt-iteration-section-title">文件与页码</h3>
-          <p className="section-caption">
-            每份 PDF 都可以单独指定页码。留空表示全文，适合快速缩小实验上下文。
-          </p>
-        </div>
-        <Badge variant="light" color="blue" radius="xl">
-          {draft.files.length} 份 PDF
-        </Badge>
-      </div>
+  const handleDrop = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+    appendFiles(Array.from(event.dataTransfer.files || []));
+  };
 
-      <div
-        className={`prompt-iteration-upload-zone ${isDragging ? 'drag-active' : ''}`}
-        onDragEnter={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          setIsDragging(true);
-        }}
-        onDragOver={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          setIsDragging(true);
-        }}
-        onDragLeave={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          setIsDragging(false);
-        }}
-        onDrop={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          setIsDragging(false);
-          appendFiles(Array.from(event.dataTransfer.files || []));
-        }}
-      >
-        <div className="prompt-iteration-upload-copy">
-          <div className="prompt-iteration-upload-icon">
-            <IconFileTypePdf size={22} stroke={1.8} />
-          </div>
-          <div>
-            <strong>上传实验 PDF</strong>
-            <p className="section-caption">支持多选和拖拽上传，默认会去重相同文件。</p>
-          </div>
+  return (
+    <div
+      className={`panel-block prompt-iteration-files ${compact ? 'prompt-iteration-files--compact' : ''} ${isDragging ? 'drag-active' : ''}`}
+      onDragEnter={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDragging(true);
+      }}
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDragging(true);
+      }}
+      onDragLeave={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDragging(false);
+      }}
+      onDrop={handleDrop}
+    >
+      <div className="prompt-iteration-files-toolbar">
+        <div className="prompt-iteration-files-title">
+          <span className="prompt-iteration-side-title">文件与页码</span>
+          <Badge variant="light" color="blue" radius="xl">
+            {draft.files.length} 份 PDF
+          </Badge>
         </div>
         <input
           ref={inputRef}
@@ -173,16 +172,18 @@ export function PromptIterationFileList({ draft, onDraftChange }) {
         />
         <Button
           variant="default"
-          leftSection={<IconUpload size={16} />}
+          size="xs"
+          radius="xl"
+          leftSection={<IconUpload size={14} />}
           onClick={() => inputRef.current?.click()}
         >
-          选择 PDF
+          添加 PDF
         </Button>
       </div>
 
       {draft.files.length === 0 ? (
-        <div className="prompt-iteration-empty">
-          先上传一批 PDF，再为每个文件单独配置页码范围。
+        <div className="prompt-iteration-empty prompt-iteration-empty--compact">
+          添加 PDF 后，可为每个文件单独设置页码范围。
         </div>
       ) : (
         <div className="prompt-iteration-file-list">
@@ -192,27 +193,33 @@ export function PromptIterationFileList({ draft, onDraftChange }) {
 
             return (
               <div key={item.id} className="prompt-iteration-file-row">
-                <div className="prompt-iteration-file-main">
-                  <div className="prompt-iteration-file-title">
-                    <span>{item.name || '未命名 PDF'}</span>
-                    <Badge
-                      variant="light"
-                      color={attached ? 'teal' : 'yellow'}
-                      radius="xl"
-                    >
-                      {attached ? formatFileSize(item.file.size) : '需重新上传'}
-                    </Badge>
-                  </div>
-                  <p className="prompt-iteration-file-meta">
-                    {attached
-                      ? '留空跑全文；支持 12、12-15、12,18、12-15,18 这类写法。'
-                      : '已恢复页码配置，但该文件需要重新上传后才能运行。'}
-                  </p>
+                <div className="prompt-iteration-file-topline">
+                  <span className="prompt-iteration-file-name" title={item.name || '未命名 PDF'}>
+                    {item.name || '未命名 PDF'}
+                  </span>
+                  <Badge
+                    variant="light"
+                    color={attached ? 'teal' : 'yellow'}
+                    radius="xl"
+                    className="prompt-iteration-file-size"
+                  >
+                    {attached ? formatFileSize(item.file.size) : '需重新上传'}
+                  </Badge>
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    radius="xl"
+                    size="sm"
+                    onClick={() => removeFile(item.id)}
+                    aria-label={`删除 ${item.name}`}
+                  >
+                    <IconTrash size={15} stroke={1.8} />
+                  </ActionIcon>
                 </div>
 
                 <TextInput
                   value={item.pageSpec}
-                  placeholder="页码范围，留空表示全文"
+                  placeholder="全文 / 12 / 12-15 / 12,18"
                   onChange={(event) => updatePageSpec(item.id, event.currentTarget.value)}
                   onBlur={() => normalizePageSpec(item)}
                   error={pageResult.valid ? undefined : pageResult.error}
@@ -221,18 +228,8 @@ export function PromptIterationFileList({ draft, onDraftChange }) {
                       ? `解析后页码：${pageResult.normalized || '全文'}`
                       : undefined
                   }
+                  rightSection={<PageSpecHelp />}
                 />
-
-                <ActionIcon
-                  variant="subtle"
-                  color="red"
-                  radius="xl"
-                  size="lg"
-                  onClick={() => removeFile(item.id)}
-                  aria-label={`删除 ${item.name}`}
-                >
-                  <IconTrash size={16} stroke={1.8} />
-                </ActionIcon>
               </div>
             );
           })}

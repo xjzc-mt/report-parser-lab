@@ -19,7 +19,58 @@ function isAnthropicProvider(providerType, apiUrl) {
   return (apiUrl || '').includes('anthropic.com');
 }
 
-async function callGemini({ sysPrompt, userPrompt, apiUrl, apiKey, modelName, pdfBase64, pdfInputs = null }) {
+function isPlainObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeRequestOptions(requestOptions) {
+  return isPlainObject(requestOptions) ? requestOptions : {};
+}
+
+function mergeGeminiRequestBody(baseBody, requestOptions) {
+  const options = normalizeRequestOptions(requestOptions);
+  const { generationConfig, extra_body: extraBody, ...restOptions } = options;
+  const normalizedExtraBody = isPlainObject(extraBody) ? extraBody : {};
+  const { generationConfig: extraGenerationConfig, ...extraRest } = normalizedExtraBody;
+
+  return {
+    ...baseBody,
+    ...restOptions,
+    ...extraRest,
+    generationConfig: {
+      ...(baseBody.generationConfig || {}),
+      ...(isPlainObject(generationConfig) ? generationConfig : {}),
+      ...(isPlainObject(extraGenerationConfig) ? extraGenerationConfig : {})
+    }
+  };
+}
+
+function mergeChatCompletionsRequestBody(baseBody, requestOptions) {
+  const options = normalizeRequestOptions(requestOptions);
+  const { extra_body: extraBody, ...restOptions } = options;
+  const merged = {
+    ...baseBody,
+    ...restOptions,
+    ...(isPlainObject(extraBody) ? extraBody : {})
+  };
+
+  return {
+    ...merged,
+    model: merged.model || baseBody.model,
+    messages: Array.isArray(merged.messages) ? merged.messages : baseBody.messages
+  };
+}
+
+async function callGemini({
+  sysPrompt,
+  userPrompt,
+  apiUrl,
+  apiKey,
+  modelName,
+  pdfBase64,
+  pdfInputs = null,
+  requestOptions = {}
+}) {
   let finalUrl = apiUrl;
   if (!finalUrl.endsWith('generateContent')) {
     finalUrl = `${apiUrl.replace(/\/$/, '')}/models/${modelName}:generateContent`;
@@ -44,11 +95,11 @@ async function callGemini({ sysPrompt, userPrompt, apiUrl, apiKey, modelName, pd
   }
   parts.push({ text: userPrompt });
   const contents = [{ role: 'user', parts }];
-  const requestBody = {
+  const requestBody = mergeGeminiRequestBody({
     system_instruction: { parts: [{ text: sysPrompt }] },
     contents,
     generationConfig: { response_mime_type: 'application/json', temperature: 0.1 }
-  };
+  }, requestOptions);
   const response = await fetch(finalUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
@@ -69,16 +120,21 @@ async function callGemini({ sysPrompt, userPrompt, apiUrl, apiKey, modelName, pd
   return { text, usage };
 }
 
-async function callAnthropic({ sysPrompt, userPrompt, apiKey, modelName }) {
+async function callAnthropic({ sysPrompt, userPrompt, apiUrl, apiKey, modelName, requestOptions = {} }) {
   const { Anthropic } = await import('@anthropic-ai/sdk');
-  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
-  const message = await client.messages.create({
+  const clientOptions = { apiKey, dangerouslyAllowBrowser: true };
+  if (apiUrl) {
+    clientOptions.baseURL = apiUrl.replace(/\/$/, '');
+  }
+  const client = new Anthropic(clientOptions);
+  const messageRequest = mergeChatCompletionsRequestBody({
     model: modelName,
     max_tokens: 8192,
     temperature: 0.1,
     system: sysPrompt,
     messages: [{ role: 'user', content: userPrompt }]
-  });
+  }, requestOptions);
+  const message = await client.messages.create(messageRequest);
   const usage = {
     input_tokens: message.usage?.input_tokens || 0,
     output_tokens: message.usage?.output_tokens || 0
@@ -87,12 +143,12 @@ async function callAnthropic({ sysPrompt, userPrompt, apiKey, modelName }) {
   return { text, usage };
 }
 
-async function callOpenAI({ sysPrompt, userPrompt, apiUrl, apiKey, modelName }) {
+async function callOpenAI({ sysPrompt, userPrompt, apiUrl, apiKey, modelName, requestOptions = {} }) {
   let finalUrl = apiUrl;
   if (!finalUrl.includes('/chat/completions')) {
     finalUrl = `${apiUrl.replace(/\/$/, '')}/chat/completions`;
   }
-  const requestBody = {
+  const requestBody = mergeChatCompletionsRequestBody({
     model: modelName,
     messages: [
       { role: 'system', content: sysPrompt },
@@ -100,7 +156,7 @@ async function callOpenAI({ sysPrompt, userPrompt, apiUrl, apiKey, modelName }) 
     ],
     temperature: 0.1,
     response_format: { type: 'json_object' }
-  };
+  }, requestOptions);
   const response = await fetch(finalUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -119,14 +175,24 @@ async function callOpenAI({ sysPrompt, userPrompt, apiUrl, apiKey, modelName }) 
   return { text: data.choices?.[0]?.message?.content || '', usage };
 }
 
-export async function callLLM({ sysPrompt, userPrompt, apiUrl, apiKey, modelName, pdfBase64 = null, pdfInputs = null, providerType = null }) {
+export async function callLLM({
+  sysPrompt,
+  userPrompt,
+  apiUrl,
+  apiKey,
+  modelName,
+  pdfBase64 = null,
+  pdfInputs = null,
+  providerType = null,
+  requestOptions = {}
+}) {
   if (isAnthropicProvider(providerType, apiUrl)) {
-    return callAnthropic({ sysPrompt, userPrompt, apiKey, modelName });
+    return callAnthropic({ sysPrompt, userPrompt, apiUrl, apiKey, modelName, requestOptions });
   }
   if (isGeminiProvider(providerType, apiUrl)) {
-    return callGemini({ sysPrompt, userPrompt, apiUrl, apiKey, modelName, pdfBase64, pdfInputs });
+    return callGemini({ sysPrompt, userPrompt, apiUrl, apiKey, modelName, pdfBase64, pdfInputs, requestOptions });
   }
-  return callOpenAI({ sysPrompt, userPrompt, apiUrl, apiKey, modelName });
+  return callOpenAI({ sysPrompt, userPrompt, apiUrl, apiKey, modelName, requestOptions });
 }
 
 export async function callLLMWithRetry(params, onProgress, maxRetries = 3) {

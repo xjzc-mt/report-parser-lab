@@ -197,13 +197,6 @@ export function CompressorTab() {
 
   return (
     <section className="glass-panel main-panel compressor-simple">
-      <div className="section-heading workspace-heading">
-        <h2 className="section-title">
-          <IconFileTypePdf size={20} stroke={1.8} />
-          <span>PDF压缩</span>
-        </h2>
-      </div>
-
       <UploadCard
         icon={<IconFileTypePdf size={26} stroke={1.8} />}
         tag="PDF"

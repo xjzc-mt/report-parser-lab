@@ -30,6 +30,36 @@ test('resolveRuntimeLlmConfig 可将 Gemini 预设转成当前 service 可消费
   assert.equal(runtimeConfig.presetId, 'preset_gemini_default');
 });
 
+test('resolveRuntimeLlmConfig 会保留 DeepSeek 高级请求参数', () => {
+  const runtimeConfig = resolveRuntimeLlmConfig({
+    id: 'preset_deepseek_default',
+    name: '默认 DeepSeek',
+    transportType: 'openai_compatible',
+    vendorKey: 'deepseek',
+    baseUrl: 'https://api.deepseek.com',
+    modelName: 'deepseek-v4-pro',
+    credentialMode: 'env',
+    credentialRef: 'VITE_DEFAULT_DEEPSEEK_API_KEY',
+    capabilities: {
+      supportsPdfUpload: false,
+      supportsJsonMode: true
+    },
+    requestOptions: {
+      max_tokens: 8192,
+      reasoning: { enabled: true }
+    }
+  }, {
+    VITE_DEFAULT_DEEPSEEK_API_KEY: 'deepseek-key'
+  });
+
+  assert.equal(runtimeConfig.providerType, 'deepseek');
+  assert.equal(runtimeConfig.apiKey, 'deepseek-key');
+  assert.deepEqual(runtimeConfig.requestOptions, {
+    max_tokens: 8192,
+    reasoning: { enabled: true }
+  });
+});
+
 test('getPresetCapabilityError 会在页面能力不满足时返回明确原因', () => {
   const error = getPresetCapabilityError(
     {

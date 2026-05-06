@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Badge, Tabs } from '@mantine/core';
+import { ActionIcon, Badge, Button, Tabs } from '@mantine/core';
+import { IconTrash } from '@tabler/icons-react';
 
 function getRunKey(run, index = 0) {
   return `${run?.createdAt || 'run'}-${index}`;
@@ -162,7 +163,10 @@ export function PromptIterationResultsPanel({
   onTabChange,
   currentRun,
   history,
-  errorMsg
+  errorMsg,
+  onDeleteHistoryRun,
+  onClearHistory,
+  historyActionsDisabled = false
 }) {
   const [selectedHistoryKey, setSelectedHistoryKey] = useState('');
 
@@ -218,22 +222,50 @@ export function PromptIterationResultsPanel({
         ) : (
           <div className="prompt-iteration-history-layout">
             <div className="prompt-iteration-history-list">
+              <div className="prompt-iteration-history-toolbar">
+                <span>共 {history.length} 条历史</span>
+                <Button
+                  size="xs"
+                  radius="xl"
+                  variant="default"
+                  color="red"
+                  disabled={historyActionsDisabled}
+                  onClick={() => onClearHistory?.()}
+                >
+                  清空历史
+                </Button>
+              </div>
               {history.map((run, index) => {
                 const historyKey = getRunKey(run, index);
                 const isActive = historyKey === selectedHistoryKey;
 
                 return (
-                  <button
+                  <div
                     key={historyKey}
-                    type="button"
                     className={`prompt-iteration-history-item ${isActive ? 'active' : ''}`}
-                    onClick={() => setSelectedHistoryKey(historyKey)}
                   >
-                    <strong>{run.name || '未命名实验'}</strong>
-                    <span>{formatDateTime(run.createdAt)}</span>
-                    <span>{run.modelName || '未记录模型'}</span>
-                    <span>成功 {run.summary?.successCount || 0}/{run.summary?.total || 0}</span>
-                  </button>
+                    <button
+                      type="button"
+                      className="prompt-iteration-history-select"
+                      onClick={() => setSelectedHistoryKey(historyKey)}
+                    >
+                      <strong>{run.name || '未命名实验'}</strong>
+                      <span>{formatDateTime(run.createdAt)}</span>
+                      <span>{run.modelName || '未记录模型'}</span>
+                      <span>成功 {run.summary?.successCount || 0}/{run.summary?.total || 0}</span>
+                    </button>
+                    <ActionIcon
+                      variant="subtle"
+                      color="red"
+                      radius="xl"
+                      size="sm"
+                      disabled={historyActionsDisabled}
+                      onClick={() => onDeleteHistoryRun?.(index)}
+                      aria-label={`删除第 ${index + 1} 条历史记录`}
+                    >
+                      <IconTrash size={14} stroke={1.8} />
+                    </ActionIcon>
+                  </div>
                 );
               })}
             </div>

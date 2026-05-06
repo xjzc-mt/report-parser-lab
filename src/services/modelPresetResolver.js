@@ -27,7 +27,8 @@ export function resolveRuntimeLlmConfig(preset, env = import.meta.env) {
     apiKey: resolvePresetApiKey(preset, env),
     modelName: String(preset.modelName || '').trim(),
     providerType: mapPresetToProviderType(preset),
-    capabilities: { ...(preset.capabilities || {}) }
+    capabilities: { ...(preset.capabilities || {}) },
+    requestOptions: { ...(preset.requestOptions || {}) }
   };
 }
 

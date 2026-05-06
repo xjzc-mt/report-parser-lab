@@ -6,7 +6,7 @@ export const methodologyContent = {
       ['UI 框架', 'Mantine + Tabler Icons', '统一表单、抽屉、按钮和图标体系'],
       ['文件处理', 'pdf.js / pdf-lib / SheetJS', 'PDF 文本解析、PDF 切片压缩、Excel 读写'],
       ['状态持久化', 'localStorage / IndexedDB', '保存页面选择、模型预设、Prompt 资产、历史运行和文件缓存'],
-      ['AI 接口', 'Gemini / OpenAI 兼容 / Claude / GLM / OneAPI', '通过模型预设统一管理不同厂商连接方式']
+      ['AI 接口', 'Gemini / OpenAI 兼容 / Claude / DeepSeek / GLM / OneAPI', '通过模型预设统一管理不同厂商连接方式与高级请求参数']
     ]
   },
   inputSpec: {
@@ -54,6 +54,7 @@ export const methodologyContent = {
       ['Gemini Native', 'gemini_native', 'x-goog-api-key', '支持 PDF 原生多模态输入'],
       ['OpenAI 兼容', 'openai_compatible', 'Authorization: Bearer', '通常使用文本或兼容网关能力'],
       ['Anthropic Native', 'anthropic_native', 'x-api-key', '按 Claude 接口格式调用'],
+      ['DeepSeek', 'openai_compatible', 'Authorization: Bearer', '按 OpenAI 兼容接口接入，可透传 max_tokens / reasoning 等扩展字段'],
       ['OneAPI / GLM', 'openai_compatible', 'Authorization: Bearer', '通过统一兼容层接入']
     ]
   },

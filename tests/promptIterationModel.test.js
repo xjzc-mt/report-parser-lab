@@ -1,10 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  DRAFT_PROMPT_ASSET_OPTION_VALUE,
+  buildPromptAssetSelectOptions,
+  buildPromptTextStats,
   extractJsonCandidate,
   parsePromptIterationPageSpec,
   summarizeParsedJson
 } from '../src/utils/promptIterationModel.js';
+
+test('buildPromptAssetSelectOptions 会把已应用的新 Prompt 草稿显示为待写入资产', () => {
+  const options = buildPromptAssetSelectOptions([], {
+    promptAssetId: '',
+    promptIndicatorCode: '001001002',
+    name: '环保创新技术'
+  }, { includeDraft: true });
+
+  assert.deepEqual(options, [
+    {
+      value: DRAFT_PROMPT_ASSET_OPTION_VALUE,
+      label: '待写入 · 001001002 · 环保创新技术'
+    }
+  ]);
+});
 
 test('parsePromptIterationPageSpec 解析混合页码并去重排序', () => {
   assert.deepEqual(parsePromptIterationPageSpec('12-14,16,14,18'), {
@@ -30,6 +48,18 @@ test('parsePromptIterationPageSpec 将空片段判为非法输入', () => {
   assert.equal(parsePromptIterationPageSpec('12,,15').valid, false);
   assert.equal(parsePromptIterationPageSpec('12,').valid, false);
   assert.equal(parsePromptIterationPageSpec(',12').valid, false);
+});
+
+test('buildPromptTextStats 分别统计系统提示词和用户提示词 token', () => {
+  const stats = buildPromptTextStats({
+    systemPrompt: '系统提示词',
+    userPrompt: 'hello world'
+  });
+
+  assert.equal(stats.system.characters, 5);
+  assert.equal(stats.user.characters, 11);
+  assert.equal(stats.total.characters, 16);
+  assert.equal(stats.total.estimatedTokens, stats.system.estimatedTokens + stats.user.estimatedTokens);
 });
 
 test('extractJsonCandidate 优先解析完整 JSON，再回退到代码块 JSON', () => {

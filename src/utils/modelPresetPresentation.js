@@ -33,8 +33,14 @@ export function formatPresetSummary(preset, runtimeConfig) {
     };
   }
 
+  const hasRequestOptions = preset.requestOptions
+    && typeof preset.requestOptions === 'object'
+    && !Array.isArray(preset.requestOptions)
+    && Object.keys(preset.requestOptions).length > 0;
+  const advancedLabel = hasRequestOptions ? ' · 高级参数' : '';
+
   return {
     title: preset.name,
-    meta: `${preset.vendorKey} · ${preset.modelName}${runtimeConfig?.apiKey ? '' : ' · Key 缺失'}`
+    meta: `${preset.vendorKey} · ${preset.modelName}${advancedLabel}${runtimeConfig?.apiKey ? '' : ' · Key 缺失'}`
   };
 }

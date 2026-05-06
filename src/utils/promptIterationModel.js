@@ -1,3 +1,60 @@
+import { estimateTextTokens } from './tokenEstimation.js';
+
+export const DRAFT_PROMPT_ASSET_OPTION_VALUE = '__draft_prompt_asset__';
+
+function normalizePromptAssetOptionText(value) {
+  return String(value || '').trim();
+}
+
+export function buildPromptAssetSelectOptions(entries = [], draft = {}, options = {}) {
+  const promptAssetOptions = (Array.isArray(entries) ? entries : []).map((entry) => ({
+    value: entry.asset.id,
+    label: `${entry.asset.indicatorCode || '未编码'} · ${entry.asset.indicatorName || entry.asset.name || '未命名 Prompt'}`
+  }));
+
+  const shouldIncludeDraft = Boolean(options.includeDraft);
+  const indicatorCode = normalizePromptAssetOptionText(draft.promptIndicatorCode);
+  const indicatorName = normalizePromptAssetOptionText(draft.name);
+  const hasPersistedAsset = Boolean(normalizePromptAssetOptionText(draft.promptAssetId));
+
+  if (!shouldIncludeDraft || hasPersistedAsset || !indicatorCode) {
+    return promptAssetOptions;
+  }
+
+  return [
+    {
+      value: DRAFT_PROMPT_ASSET_OPTION_VALUE,
+      label: `待写入 · ${indicatorCode} · ${indicatorName || '未命名 Prompt'}`
+    },
+    ...promptAssetOptions
+  ];
+}
+
+function mergeTextTokenStats(...items) {
+  return items.reduce((acc, item) => ({
+    characters: acc.characters + item.characters,
+    cjkCharacters: acc.cjkCharacters + item.cjkCharacters,
+    nonCjkCharacters: acc.nonCjkCharacters + item.nonCjkCharacters,
+    estimatedTokens: acc.estimatedTokens + item.estimatedTokens
+  }), {
+    characters: 0,
+    cjkCharacters: 0,
+    nonCjkCharacters: 0,
+    estimatedTokens: 0
+  });
+}
+
+export function buildPromptTextStats({ systemPrompt = '', userPrompt = '' } = {}) {
+  const system = estimateTextTokens(systemPrompt);
+  const user = estimateTextTokens(userPrompt);
+
+  return {
+    system,
+    user,
+    total: mergeTextTokenStats(system, user)
+  };
+}
+
 function normalizePageList(pages) {
   const sorted = Array.from(new Set(pages)).sort((a, b) => a - b);
   const ranges = [];

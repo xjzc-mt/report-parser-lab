@@ -47,6 +47,15 @@ export function clipPromptIterationHistory(history, limit = 20) {
   return Array.isArray(history) ? history.slice(0, limit) : [];
 }
 
+export function removePromptIterationHistoryAt(history, index) {
+  const list = Array.isArray(history) ? history : [];
+  const numericIndex = Number(index);
+  if (!Number.isInteger(numericIndex) || numericIndex < 0 || numericIndex >= list.length) {
+    return [...list];
+  }
+  return list.filter((_, itemIndex) => itemIndex !== numericIndex);
+}
+
 export async function runPromptIteration(input, deps = {}) {
   const {
     callLLMWithRetry: call = callLLMWithRetry,
@@ -61,13 +70,37 @@ export async function runPromptIteration(input, deps = {}) {
   }
 
   const results = [];
+  const files = Array.isArray(input?.files) ? input.files : [];
+  const totalFiles = files.length || 1;
+  const reportProgress = (message, percentage = -1, extra = {}) => {
+    input?.onProgress?.({
+      message,
+      percentage,
+      timestamp: new Date().toLocaleTimeString(),
+      ...extra
+    });
+  };
+  const reportFileProgress = (fileIndex, fileName, message, localPercentage = -1) => {
+    const percentage = localPercentage >= 0
+      ? Math.min(99, Math.round(((fileIndex + (localPercentage / 100)) / totalFiles) * 100))
+      : -1;
+    reportProgress(`[${fileIndex + 1}/${files.length}] ${fileName || '未命名 PDF'}：${message}`, percentage, {
+      fileIndex,
+      fileName
+    });
+  };
 
-  for (const item of input.files) {
+  reportProgress('开始 Prompt 快速验证...', 0);
+
+  for (const [fileIndex, item] of files.entries()) {
     const startedAt = now();
     const file = item?.file;
-    const fileName = typeof file?.name === 'string' && file.name.trim() ? file.name : '';
+    const fileName = typeof file?.name === 'string' && file.name.trim() ? file.name : (item?.name || '');
+
+    reportFileProgress(fileIndex, fileName, '开始处理', 4);
 
     if (!file || !fileName) {
+      reportFileProgress(fileIndex, fileName, '缺少 PDF 文件或文件名', 100);
       results.push({
         fileId: item?.id,
         fileName,
@@ -89,6 +122,7 @@ export async function runPromptIteration(input, deps = {}) {
     const parsedPageSpec = parsePromptIterationPageSpec(item.pageSpec);
 
     if (!parsedPageSpec.valid) {
+      reportFileProgress(fileIndex, fileName, `页码错误：${parsedPageSpec.error}`, 100);
       results.push({
         fileId: item.id,
         fileName,
@@ -111,24 +145,30 @@ export async function runPromptIteration(input, deps = {}) {
       let pdfBase64 = await fileToBase64(file);
       let resolvedPages = [];
       let scopeLabel = '全文';
+      reportFileProgress(fileIndex, fileName, '正在载入全文 PDF', 18);
 
       if (parsedPageSpec.pages.length > 0) {
+        reportFileProgress(fileIndex, fileName, `正在截取页码：${parsedPageSpec.normalized}`, 24);
         const extracted = await extractPages(file, parsedPageSpec.pages, fileName);
         pdfBase64 = toBase64(extracted.pdfData);
         resolvedPages = parsedPageSpec.pages;
         scopeLabel = `指定页：${parsedPageSpec.normalized}`;
       }
 
+      reportFileProgress(fileIndex, fileName, '正在调用模型', 58);
+      const targetName = String(input.name || '').trim();
       const response = await call({
         sysPrompt: input.systemPrompt,
-        userPrompt: `${input.userPrompt}\n\n提取目标：${input.name}`,
+        userPrompt: targetName ? `${input.userPrompt}\n\n提取目标：${targetName}` : input.userPrompt,
         apiUrl: input.llmSettings.apiUrl,
         apiKey: input.llmSettings.apiKey,
         modelName: input.llmSettings.modelName,
         providerType: input.llmSettings.providerType,
+        requestOptions: input.llmSettings.requestOptions,
         pdfBase64
-      });
+      }, (message) => reportFileProgress(fileIndex, fileName, message, -1));
 
+      reportFileProgress(fileIndex, fileName, '正在解析模型回复', 88);
       const parsed = extractJsonCandidate(response.text);
       results.push({
         fileId: item.id,
@@ -145,7 +185,9 @@ export async function runPromptIteration(input, deps = {}) {
         usage: response.usage || { input_tokens: 0, output_tokens: 0 },
         durationMs: now() - startedAt
       });
+      reportFileProgress(fileIndex, fileName, '处理完成', 100);
     } catch (error) {
+      reportFileProgress(fileIndex, fileName, `运行失败：${error instanceof Error ? error.message : String(error)}`, 100);
       results.push({
         fileId: item.id,
         fileName,
@@ -164,7 +206,7 @@ export async function runPromptIteration(input, deps = {}) {
     }
   }
 
-  return {
+  const run = {
     createdAt: now(),
     name: input.name,
     systemPrompt: input.systemPrompt,
@@ -178,4 +220,7 @@ export async function runPromptIteration(input, deps = {}) {
       errorCount: results.filter((item) => item.status === 'error').length
     }
   };
+
+  reportProgress(`Prompt 快速验证完成：成功 ${run.summary.successCount}/${run.summary.total}`, 100);
+  return run;
 }

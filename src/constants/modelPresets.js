@@ -9,6 +9,7 @@ export const VENDOR_KEYS = {
   CLAUDE: 'claude',
   OPENAI: 'openai',
   ONEAPI: 'oneapi',
+  DEEPSEEK: 'deepseek',
   GLM: 'glm',
   CUSTOM: 'custom'
 };
@@ -51,6 +52,7 @@ export const DEFAULT_PRESET_DEFINITIONS = [
     apiKeyEnv: 'VITE_DEFAULT_GEMINI_API_KEY',
     baseUrlEnv: 'VITE_DEFAULT_GEMINI_BASE_URL',
     modelEnv: 'VITE_DEFAULT_GEMINI_MODEL',
+    requestOptionsEnv: 'VITE_DEFAULT_GEMINI_REQUEST_OPTIONS',
     defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta',
     capabilities: {
       supportsPdfUpload: true,
@@ -67,6 +69,7 @@ export const DEFAULT_PRESET_DEFINITIONS = [
     apiKeyEnv: 'VITE_DEFAULT_ANTHROPIC_API_KEY',
     baseUrlEnv: 'VITE_DEFAULT_ANTHROPIC_BASE_URL',
     modelEnv: 'VITE_DEFAULT_ANTHROPIC_MODEL',
+    requestOptionsEnv: 'VITE_DEFAULT_ANTHROPIC_REQUEST_OPTIONS',
     defaultBaseUrl: 'https://api.anthropic.com',
     capabilities: {
       supportsPdfUpload: false,
@@ -83,6 +86,7 @@ export const DEFAULT_PRESET_DEFINITIONS = [
     apiKeyEnv: 'VITE_DEFAULT_OPENAI_API_KEY',
     baseUrlEnv: 'VITE_DEFAULT_OPENAI_BASE_URL',
     modelEnv: 'VITE_DEFAULT_OPENAI_MODEL',
+    requestOptionsEnv: 'VITE_DEFAULT_OPENAI_REQUEST_OPTIONS',
     defaultBaseUrl: 'https://api.openai.com/v1',
     capabilities: {
       supportsPdfUpload: false,
@@ -99,11 +103,29 @@ export const DEFAULT_PRESET_DEFINITIONS = [
     apiKeyEnv: 'VITE_DEFAULT_ONEAPI_API_KEY',
     baseUrlEnv: 'VITE_DEFAULT_ONEAPI_BASE_URL',
     modelEnv: 'VITE_DEFAULT_ONEAPI_MODEL',
+    requestOptionsEnv: 'VITE_DEFAULT_ONEAPI_REQUEST_OPTIONS',
     defaultBaseUrl: '',
     capabilities: {
       supportsPdfUpload: false,
       supportsJsonMode: true,
       supportsVision: true,
+      supportsStreaming: true
+    }
+  },
+  {
+    id: 'preset_deepseek_default',
+    name: '默认 DeepSeek',
+    vendorKey: VENDOR_KEYS.DEEPSEEK,
+    transportType: TRANSPORT_TYPES.OPENAI_COMPATIBLE,
+    apiKeyEnv: 'VITE_DEFAULT_DEEPSEEK_API_KEY',
+    baseUrlEnv: 'VITE_DEFAULT_DEEPSEEK_BASE_URL',
+    modelEnv: 'VITE_DEFAULT_DEEPSEEK_MODEL',
+    requestOptionsEnv: 'VITE_DEFAULT_DEEPSEEK_REQUEST_OPTIONS',
+    defaultBaseUrl: 'https://api.deepseek.com',
+    capabilities: {
+      supportsPdfUpload: false,
+      supportsJsonMode: true,
+      supportsVision: false,
       supportsStreaming: true
     }
   },
@@ -115,6 +137,7 @@ export const DEFAULT_PRESET_DEFINITIONS = [
     apiKeyEnv: 'VITE_DEFAULT_GLM_API_KEY',
     baseUrlEnv: 'VITE_DEFAULT_GLM_BASE_URL',
     modelEnv: 'VITE_DEFAULT_GLM_MODEL',
+    requestOptionsEnv: 'VITE_DEFAULT_GLM_REQUEST_OPTIONS',
     defaultBaseUrl: 'https://open.bigmodel.cn/api/paas/v4',
     capabilities: {
       supportsPdfUpload: false,

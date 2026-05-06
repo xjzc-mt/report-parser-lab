@@ -37,6 +37,8 @@ VITE_PLATFORM_DEFAULT_BASE_URL=https://generativelanguage.googleapis.com/v1beta
 VITE_PLATFORM_DEFAULT_MODEL=gemini-2.5-pro
 VITE_PLATFORM_DEFAULT_API_KEY=your_key
 VITE_PLATFORM_DEFAULT_PRESET_NAME=平台默认模型
+# 可选：高级请求参数 JSON，会合并到实际请求体
+VITE_PLATFORM_DEFAULT_REQUEST_OPTIONS=
 ```
 
 也支持按厂商配置只读默认预设：
@@ -50,9 +52,17 @@ VITE_DEFAULT_ANTHROPIC_API_KEY=
 VITE_DEFAULT_ANTHROPIC_MODEL=
 VITE_DEFAULT_ONEAPI_API_KEY=
 VITE_DEFAULT_ONEAPI_MODEL=
+VITE_DEFAULT_DEEPSEEK_API_KEY=
+VITE_DEFAULT_DEEPSEEK_MODEL=deepseek-v4-pro
+VITE_DEFAULT_DEEPSEEK_BASE_URL=https://api.deepseek.com
+VITE_DEFAULT_DEEPSEEK_REQUEST_OPTIONS={"max_tokens":8192}
 VITE_DEFAULT_GLM_API_KEY=
-VITE_DEFAULT_GLM_MODEL=
+VITE_DEFAULT_GLM_MODEL=glm-4.7
 ```
+
+高级请求参数适合维护厂商扩展字段，例如 Gemini 的 `generationConfig.thinkingConfig`、Claude 的 `thinking`、OpenAI 兼容接口的 `reasoning` / `max_tokens` / `response_format`。这些字段不包含密钥，可以在设置抽屉中展示和编辑；真实 Key 仍不会展示。
+
+DeepSeek / GLM 这类 OpenAI 兼容接口如果要开启思考模式，可以在高级参数里写入类似 `{"thinking":{"type":"enabled"},"max_tokens":8192}`；平台会把这些字段合并到实际请求体。
 
 兼容旧配置 `VITE_GEMINI_API_KEY`，但后续建议统一使用 `VITE_PLATFORM_DEFAULT_*`。
 

@@ -791,6 +791,7 @@ export async function runExtractionPhase({
               apiKey: resolveApiKey(llm1Settings),
               modelName: llm1Settings.modelName,
               providerType: llm1Settings.providerType,
+              requestOptions: llm1Settings.requestOptions,
               pdfBase64
             },
             (msg) => log(msg),
@@ -1112,7 +1113,8 @@ export async function runOptimizationPhase({
             apiUrl: optimizationSettings.apiUrl,
             apiKey: optimizationSettings.apiKey,
             modelName: optimizationSettings.modelName,
-            providerType: optimizationSettings.providerType
+            providerType: optimizationSettings.providerType,
+            requestOptions: optimizationSettings.requestOptions
           }, null, maxRetries);
 
           if (tokenStats) {
@@ -1153,6 +1155,7 @@ export async function runOptimizationPhase({
               apiKey: optimizationSettings.apiKey,
               modelName: optimizationSettings.modelName,
               providerType: optimizationSettings.providerType,
+              requestOptions: optimizationSettings.requestOptions,
               pdfBase64: pdfInput.pdfBase64
             }, null, maxRetries);
             

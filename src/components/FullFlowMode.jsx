@@ -12,9 +12,11 @@ import {
   savePromptIterationHistory
 } from '../services/persistenceService.js';
 import { resolveSettingsWithPlatformDefaults } from '../utils/platformDefaultModel.js';
+import { buildPromptAssetSelectOptions } from '../utils/promptIterationModel.js';
 import {
   runPromptIteration,
   clipPromptIterationHistory,
+  removePromptIterationHistoryAt,
   normalizePromptIterationDraft,
   supportsPromptIterationPdfProvider
 } from '../services/promptIterationService.js';
@@ -29,6 +31,7 @@ import { PagePresetQuickSwitch } from './modelPresets/PagePresetQuickSwitch.jsx'
 import { PromptIterationConfigPanel } from './promptIteration/PromptIterationConfigPanel.jsx';
 import { PromptIterationFileList } from './promptIteration/PromptIterationFileList.jsx';
 import { PromptIterationResultsPanel } from './promptIteration/PromptIterationResultsPanel.jsx';
+import { ProgressPanel } from './ProgressPanel.jsx';
 
 function hasAttachedFile(item) {
   return Boolean(item?.file && typeof item.file.arrayBuffer === 'function');
@@ -41,6 +44,16 @@ function createFallbackPromptIterationSettings() {
   });
 }
 
+function createInitialProgress() {
+  return {
+    visible: false,
+    status: '',
+    percentage: 0,
+    logs: [],
+    isLoading: false
+  };
+}
+
 export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = '' }) {
   const [draft, setDraft] = useState(() => normalizePromptIterationDraft(null));
   const [selectedPresetId, setSelectedPresetId] = useState(() => loadPageModelSelection(MODEL_PAGE_KEYS.PROMPT_ITERATION));
@@ -51,6 +64,7 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
   const [isSavingPromptAsset, setIsSavingPromptAsset] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [hasHydrated, setHasHydrated] = useState(false);
+  const [progress, setProgress] = useState(createInitialProgress);
 
   const selectedPreset = useMemo(
     () => resolvePagePreset(
@@ -70,11 +84,8 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
     [draft.promptAssetId, vm?.promptAssetEntries]
   );
   const promptAssetOptions = useMemo(
-    () => (vm?.promptAssetEntries || []).map((entry) => ({
-      value: entry.asset.id,
-      label: `${entry.asset.indicatorCode || '未编码'} · ${entry.asset.indicatorName || entry.asset.name || '未命名 Prompt'}`
-    })),
-    [vm?.promptAssetEntries]
+    () => buildPromptAssetSelectOptions(vm?.promptAssetEntries || [], draft, { includeDraft: true }),
+    [draft, vm?.promptAssetEntries]
   );
   const promptVersionOptions = useMemo(
     () => (selectedPromptAssetEntry?.versions || []).map((version) => ({
@@ -164,7 +175,6 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
 
   const canRun = Boolean(
     runnableFiles.length > 0 &&
-    draft.name.trim() &&
     (draft.systemPrompt.trim() || draft.userPrompt.trim()) &&
     effectiveLlmSettings.apiKey &&
     effectiveLlmSettings.modelName &&
@@ -186,12 +196,35 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
 
     setIsRunning(true);
     setErrorMsg('');
+    setProgress({
+      visible: true,
+      status: '开始 Prompt 快速验证...',
+      percentage: 0,
+      logs: [],
+      isLoading: true
+    });
 
     try {
       const run = await runPromptIteration({
         ...draft,
         files: runnableFiles.map((item) => ({ ...item, file: item.file })),
-        llmSettings: effectiveLlmSettings
+        llmSettings: effectiveLlmSettings,
+        onProgress: (entry) => {
+          setProgress((previous) => ({
+            visible: true,
+            status: entry.message || previous.status,
+            percentage: entry.percentage >= 0 ? entry.percentage : previous.percentage,
+            logs: [
+              ...previous.logs,
+              {
+                id: `${Date.now()}-${Math.random()}`,
+                time: entry.timestamp || new Date().toLocaleTimeString(),
+                message: entry.message
+              }
+            ],
+            isLoading: entry.percentage >= 0 ? entry.percentage < 100 : previous.isLoading
+          }));
+        }
       });
 
       const nextHistory = clipPromptIterationHistory([run, ...history]);
@@ -199,8 +232,30 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
       setHistory(nextHistory);
       setActiveResultTab('current');
       await savePromptIterationHistory(nextHistory);
+      setProgress((previous) => ({
+        ...previous,
+        status: `验证完成：成功 ${run.summary?.successCount || 0}/${run.summary?.total || 0}`,
+        percentage: 100,
+        isLoading: false
+      }));
     } catch (error) {
-      setErrorMsg(error instanceof Error ? error.message : String(error));
+      const message = error instanceof Error ? error.message : String(error);
+      setErrorMsg(message);
+      setProgress((previous) => ({
+        ...previous,
+        visible: true,
+        status: `运行失败：${message}`,
+        percentage: 100,
+        logs: [
+          ...previous.logs,
+          {
+            id: `${Date.now()}-${Math.random()}`,
+            time: new Date().toLocaleTimeString(),
+            message: `运行失败：${message}`
+          }
+        ],
+        isLoading: false
+      }));
     } finally {
       setIsRunning(false);
     }
@@ -224,6 +279,9 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
         sourceType: 'iterated'
       });
       await vm?.onPromptAssetsChanged?.();
+      if (!result.createdVersion) {
+        window.alert('未有任何变化，不需要写入新的 Prompt 版本。');
+      }
       setDraft((previous) => normalizePromptIterationDraft({
         ...previous,
         promptAssetId: result.asset.id,
@@ -235,6 +293,26 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
     } finally {
       setIsSavingPromptAsset(false);
     }
+  };
+
+  const handleDeleteHistoryRun = async (index) => {
+    if (isRunning) {
+      return;
+    }
+    const nextHistory = removePromptIterationHistoryAt(history, index);
+    setHistory(nextHistory);
+    await savePromptIterationHistory(nextHistory);
+  };
+
+  const handleClearHistory = async () => {
+    if (isRunning || history.length === 0) {
+      return;
+    }
+    if (!window.confirm('确定清空全部 Prompt 快速迭代历史记录？')) {
+      return;
+    }
+    setHistory([]);
+    await savePromptIterationHistory([]);
   };
 
   return (
@@ -314,11 +392,13 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
         onSavePromptAsset={handleSavePromptAsset}
         canSavePromptAsset={canSavePromptAsset}
         isSavingPromptAsset={isSavingPromptAsset}
-      />
-
-      <PromptIterationFileList
-        draft={draft}
-        onDraftChange={setDraft}
+        filesPanel={(
+          <PromptIterationFileList
+            draft={draft}
+            onDraftChange={setDraft}
+            compact
+          />
+        )}
       />
 
       <div className="prompt-iteration-actions">
@@ -342,12 +422,17 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
         </Button>
       </div>
 
+      <ProgressPanel progress={progress} eyebrow="Prompt 快速迭代" title="运行进度" maxLogs={8} />
+
       <PromptIterationResultsPanel
         activeTab={activeResultTab}
         onTabChange={setActiveResultTab}
         currentRun={currentRun}
         history={history}
         errorMsg={errorMsg}
+        onDeleteHistoryRun={handleDeleteHistoryRun}
+        onClearHistory={handleClearHistory}
+        historyActionsDisabled={isRunning}
       />
     </section>
   );

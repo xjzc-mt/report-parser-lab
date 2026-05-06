@@ -311,6 +311,47 @@ test('savePromptAssetVersion 会为现有资产追加新版本并切换为当前
   assert.equal(snapshot.versions[1].sourceType, 'iterated');
 });
 
+test('savePromptAssetVersion 在 Prompt 内容无变化时不会新增版本', async () => {
+  const harness = createRepositoryHarness();
+  const createId = ((counts) => (prefix) => {
+    counts[prefix] = (counts[prefix] || 0) + 1;
+    return `${prefix}_${counts[prefix]}`;
+  })({});
+
+  await importPromptAssetRows([
+    {
+      indicator_code: 'E1',
+      indicator_name: '排放总量',
+      system_prompt: '系统提示词',
+      user_prompt: '提取排放总量'
+    }
+  ], {
+    repository: harness.repository,
+    now: () => 1000,
+    createId
+  });
+
+  const result = await savePromptAssetVersion({
+    assetId: 'passet_1',
+    indicatorCode: 'E1',
+    indicatorName: '排放总量',
+    systemPrompt: '系统提示词',
+    userPromptTemplate: '提取排放总量',
+    label: '快速迭代写回',
+    sourceType: 'iterated'
+  }, {
+    repository: harness.repository,
+    now: () => 2000,
+    createId
+  });
+
+  const snapshot = harness.snapshot();
+  assert.equal(result.createdVersion, false);
+  assert.equal(result.version.id, 'pver_1');
+  assert.equal(snapshot.assets[0].latestVersionId, 'pver_1');
+  assert.equal(snapshot.versions.length, 1);
+});
+
 test('rollbackPromptAssetToVersion 会把历史版本重新设为当前基线', async () => {
   const harness = createRepositoryHarness();
   const createId = ((counts) => (prefix) => {

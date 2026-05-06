@@ -9,6 +9,17 @@ function readEnv(env, key) {
   return String(env?.[key] || '').trim();
 }
 
+function parseRequestOptions(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch (_) {
+    return {};
+  }
+}
+
 function createReadonlyEnvPreset({
   id,
   name,
@@ -18,6 +29,7 @@ function createReadonlyEnvPreset({
   modelName,
   credentialRef,
   capabilities,
+  requestOptions = {},
   isDefault = true
 }) {
   return {
@@ -31,6 +43,7 @@ function createReadonlyEnvPreset({
     credentialRef,
     manualApiKey: '',
     capabilities: { ...(capabilities || {}) },
+    requestOptions: { ...(requestOptions || {}) },
     status: 'active',
     isReadonly: true,
     isDefault,
@@ -71,6 +84,17 @@ function getVendorProfile(vendorKey) {
           supportsPdfUpload: false,
           supportsJsonMode: true,
           supportsVision: true,
+          supportsStreaming: true
+        }
+      };
+    case VENDOR_KEYS.DEEPSEEK:
+      return {
+        transportType: TRANSPORT_TYPES.OPENAI_COMPATIBLE,
+        defaultBaseUrl: 'https://api.deepseek.com',
+        capabilities: {
+          supportsPdfUpload: false,
+          supportsJsonMode: true,
+          supportsVision: false,
           supportsStreaming: true
         }
       };
@@ -118,6 +142,7 @@ function inferVendorKey(env = {}) {
   const baseUrl = readEnv(env, 'VITE_PLATFORM_DEFAULT_BASE_URL').toLowerCase();
   if (baseUrl.includes('googleapis.com')) return VENDOR_KEYS.GEMINI;
   if (baseUrl.includes('anthropic.com')) return VENDOR_KEYS.CLAUDE;
+  if (baseUrl.includes('deepseek.com')) return VENDOR_KEYS.DEEPSEEK;
   if (baseUrl.includes('bigmodel.cn')) return VENDOR_KEYS.GLM;
   if (baseUrl) return VENDOR_KEYS.OPENAI;
 
@@ -157,7 +182,8 @@ export function resolvePlatformDefaultConnection(env = import.meta.env) {
       vendorKey,
       transportType: resolveTransportType(env, vendorKey)
     }),
-    capabilities: { ...profile.capabilities }
+    capabilities: { ...profile.capabilities },
+    requestOptions: parseRequestOptions(readEnv(env, 'VITE_PLATFORM_DEFAULT_REQUEST_OPTIONS'))
   };
 }
 
@@ -181,7 +207,8 @@ export function buildPlatformDefaultPreset(env = {}) {
     baseUrl: connection.baseUrl,
     modelName: connection.modelName,
     credentialRef: explicitApiKey ? 'VITE_PLATFORM_DEFAULT_API_KEY' : 'VITE_GEMINI_API_KEY',
-    capabilities: connection.capabilities
+    capabilities: connection.capabilities,
+    requestOptions: connection.requestOptions
   });
 }
 
@@ -202,7 +229,8 @@ export function buildVendorEnvDefaultPresets(env = {}) {
         baseUrl: readEnv(env, definition.baseUrlEnv) || definition.defaultBaseUrl || '',
         modelName,
         credentialRef: definition.apiKeyEnv,
-        capabilities: definition.capabilities
+        capabilities: definition.capabilities,
+        requestOptions: parseRequestOptions(readEnv(env, definition.requestOptionsEnv))
       });
     })
     .filter(Boolean);
@@ -230,18 +258,25 @@ export function resolvePlatformDefaultRuntimeConfig(env = import.meta.env) {
     ),
     modelName: connection.modelName,
     providerType: connection.providerType,
-    capabilities: { ...connection.capabilities }
+    capabilities: { ...connection.capabilities },
+    requestOptions: { ...(connection.requestOptions || {}) }
   };
 }
 
 export function resolveSettingsWithPlatformDefaults(settings = {}, env = import.meta.env) {
   const runtimeConfig = resolvePlatformDefaultRuntimeConfig(env);
+  const pageRequestOptions = settings?.requestOptions && typeof settings.requestOptions === 'object' && !Array.isArray(settings.requestOptions)
+    ? settings.requestOptions
+    : {};
 
   return {
     ...settings,
     apiUrl: String(settings?.apiUrl || '').trim() || runtimeConfig.apiUrl || '',
     apiKey: String(settings?.apiKey || '').trim() || runtimeConfig.apiKey || '',
     modelName: String(settings?.modelName || '').trim() || runtimeConfig.modelName || '',
-    providerType: String(settings?.providerType || '').trim() || runtimeConfig.providerType || ''
+    providerType: String(settings?.providerType || '').trim() || runtimeConfig.providerType || '',
+    requestOptions: Object.keys(pageRequestOptions).length > 0
+      ? { ...pageRequestOptions }
+      : { ...(runtimeConfig.requestOptions || {}) }
   };
 }

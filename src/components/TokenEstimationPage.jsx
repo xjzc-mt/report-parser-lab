@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Button, FileInput, Textarea } from '@mantine/core';
-import { IconChartHistogram, IconFileAnalytics, IconRefresh } from '@tabler/icons-react';
+import { IconFileAnalytics, IconRefresh } from '@tabler/icons-react';
 import { MODEL_PAGE_KEYS } from '../constants/modelPresets.js';
 import { parseExcel, parsePDF } from '../services/fileParsers.js';
 import { resolvePagePreset, resolveRuntimeLlmConfig } from '../services/modelPresetResolver.js';
@@ -114,13 +114,7 @@ export function TokenEstimationPage({
 
   return (
     <section className="glass-panel main-panel token-estimation-page">
-      <div className="section-heading workspace-heading">
-        <div>
-          <h2 className="section-title">
-            <IconChartHistogram size={20} stroke={1.8} />
-            <span>Token统计</span>
-          </h2>
-        </div>
+      <div className="dataprep-subpage-toolbar">
         <PagePresetQuickSwitch
           presets={modelPresets}
           preset={selectedPreset}

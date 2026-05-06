@@ -9,6 +9,7 @@ import {
   Stack,
   Switch,
   Text,
+  Textarea,
   TextInput
 } from '@mantine/core';
 import { IconCopy, IconPlus, IconTrash } from '@tabler/icons-react';
@@ -25,9 +26,66 @@ const VENDOR_OPTIONS = [
   { value: VENDOR_KEYS.CLAUDE, label: 'Claude' },
   { value: VENDOR_KEYS.OPENAI, label: 'OpenAI' },
   { value: VENDOR_KEYS.ONEAPI, label: 'OneAPI' },
+  { value: VENDOR_KEYS.DEEPSEEK, label: 'DeepSeek' },
   { value: VENDOR_KEYS.GLM, label: 'GLM' },
   { value: VENDOR_KEYS.CUSTOM, label: '自定义' }
 ];
+
+const VENDOR_DEFAULTS = {
+  [VENDOR_KEYS.DEEPSEEK]: {
+    transportType: TRANSPORT_TYPES.OPENAI_COMPATIBLE,
+    baseUrl: 'https://api.deepseek.com',
+    modelName: 'deepseek-v4-pro',
+    capabilities: {
+      supportsPdfUpload: false,
+      supportsJsonMode: true,
+      supportsVision: false,
+      supportsStreaming: true
+    }
+  },
+  [VENDOR_KEYS.GEMINI]: {
+    transportType: TRANSPORT_TYPES.GEMINI_NATIVE,
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    modelName: 'gemini-2.5-pro',
+    capabilities: {
+      supportsPdfUpload: true,
+      supportsJsonMode: true,
+      supportsVision: true,
+      supportsStreaming: false
+    }
+  },
+  [VENDOR_KEYS.CLAUDE]: {
+    transportType: TRANSPORT_TYPES.ANTHROPIC_NATIVE,
+    baseUrl: 'https://api.anthropic.com',
+    capabilities: {
+      supportsPdfUpload: false,
+      supportsJsonMode: true,
+      supportsVision: false,
+      supportsStreaming: false
+    }
+  },
+  [VENDOR_KEYS.OPENAI]: {
+    transportType: TRANSPORT_TYPES.OPENAI_COMPATIBLE,
+    baseUrl: 'https://api.openai.com/v1',
+    capabilities: {
+      supportsPdfUpload: false,
+      supportsJsonMode: true,
+      supportsVision: true,
+      supportsStreaming: true
+    }
+  },
+  [VENDOR_KEYS.GLM]: {
+    transportType: TRANSPORT_TYPES.OPENAI_COMPATIBLE,
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    modelName: 'glm-4.7',
+    capabilities: {
+      supportsPdfUpload: false,
+      supportsJsonMode: true,
+      supportsVision: true,
+      supportsStreaming: true
+    }
+  }
+};
 
 function createPresetId() {
   return `preset_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
@@ -44,6 +102,7 @@ function createEmptyPreset() {
     credentialMode: 'manual',
     credentialRef: '',
     manualApiKey: '',
+    requestOptions: {},
     capabilities: {
       supportsPdfUpload: false,
       supportsJsonMode: true,
@@ -61,6 +120,8 @@ function createEmptyPreset() {
 function clonePreset(preset) {
   return {
     ...preset,
+    capabilities: { ...(preset.capabilities || {}) },
+    requestOptions: { ...(preset.requestOptions || {}) },
     id: createPresetId(),
     name: `${preset.name} - 副本`,
     credentialMode: 'manual',
@@ -71,8 +132,27 @@ function clonePreset(preset) {
   };
 }
 
+function formatRequestOptions(requestOptions) {
+  const normalized = requestOptions && typeof requestOptions === 'object' && !Array.isArray(requestOptions)
+    ? requestOptions
+    : {};
+  return JSON.stringify(normalized, null, 2);
+}
+
+function parseRequestOptions(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return {};
+  const parsed = JSON.parse(raw);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('高级参数必须是 JSON 对象');
+  }
+  return parsed;
+}
+
 export function ModelPresetManager({ presets = [], onChangePresets }) {
   const [selectedPresetId, setSelectedPresetId] = useState(() => presets[0]?.id || '');
+  const [requestOptionsDraft, setRequestOptionsDraft] = useState('{}');
+  const [requestOptionsError, setRequestOptionsError] = useState('');
 
   useEffect(() => {
     if (!presets.some((item) => item.id === selectedPresetId)) {
@@ -85,6 +165,16 @@ export function ModelPresetManager({ presets = [], onChangePresets }) {
     [presets, selectedPresetId]
   );
 
+  const selectedRequestOptionsText = useMemo(
+    () => formatRequestOptions(selectedPreset?.requestOptions),
+    [selectedPreset]
+  );
+
+  useEffect(() => {
+    setRequestOptionsDraft(selectedRequestOptionsText);
+    setRequestOptionsError('');
+  }, [selectedPreset?.id, selectedRequestOptionsText]);
+
   const updatePreset = (updater) => {
     if (!selectedPreset) return;
     const nextPresets = presets.map((item) => (
@@ -93,6 +183,21 @@ export function ModelPresetManager({ presets = [], onChangePresets }) {
         : item
     ));
     onChangePresets?.(nextPresets);
+  };
+
+  const applyRequestOptionsDraft = () => {
+    if (!selectedPreset || selectedPreset.isReadonly) return;
+    try {
+      const parsed = parseRequestOptions(requestOptionsDraft);
+      setRequestOptionsError('');
+      updatePreset((item) => ({
+        ...item,
+        requestOptions: parsed
+      }));
+      setRequestOptionsDraft(formatRequestOptions(parsed));
+    } catch (error) {
+      setRequestOptionsError(error instanceof Error ? error.message : 'JSON 格式不正确');
+    }
   };
 
   return (
@@ -191,7 +296,21 @@ export function ModelPresetManager({ presets = [], onChangePresets }) {
               data={VENDOR_OPTIONS}
               disabled={selectedPreset.isReadonly}
               allowDeselect={false}
-              onChange={(value) => updatePreset((item) => ({ ...item, vendorKey: value || VENDOR_KEYS.CUSTOM }))}
+              onChange={(value) => updatePreset((item) => {
+                const vendorKey = value || VENDOR_KEYS.CUSTOM;
+                const defaults = VENDOR_DEFAULTS[vendorKey] || {};
+                return {
+                  ...item,
+                  vendorKey,
+                  transportType: defaults.transportType || item.transportType,
+                  baseUrl: item.baseUrl || defaults.baseUrl || '',
+                  modelName: item.modelName || defaults.modelName || '',
+                  capabilities: {
+                    ...(item.capabilities || {}),
+                    ...(defaults.capabilities || {})
+                  }
+                };
+              })}
             />
 
             <Select
@@ -231,6 +350,22 @@ export function ModelPresetManager({ presets = [], onChangePresets }) {
                 </Text>
               </div>
             )}
+
+            <Textarea
+              label="高级请求参数 JSON"
+              description="会合并到实际请求体，用于 reasoning/thinking、max_tokens、response_format、Gemini generationConfig 等厂商扩展字段。"
+              value={requestOptionsDraft}
+              autosize
+              minRows={5}
+              maxRows={10}
+              disabled={selectedPreset.isReadonly}
+              error={requestOptionsError}
+              onChange={(event) => {
+                setRequestOptionsDraft(event.currentTarget.value);
+                if (requestOptionsError) setRequestOptionsError('');
+              }}
+              onBlur={applyRequestOptionsDraft}
+            />
 
             <Switch
               label="启用该预设"

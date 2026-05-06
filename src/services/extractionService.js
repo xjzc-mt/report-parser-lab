@@ -33,6 +33,7 @@ async function processExtractionBatch({
   apiUrl,
   apiKey,
   modelName,
+  requestOptions,
   pdfBase64,
   docText,
   reportProgress
@@ -63,6 +64,7 @@ async function processExtractionBatch({
     apiUrl,
     apiKey,
     modelName,
+    requestOptions,
     pdfBase64
   }, reportProgress);
 
@@ -191,6 +193,7 @@ export async function runExtractionJob({ pdfFile, csvFile, settings, onProgress,
           apiUrl: runtimeSettings.apiUrl.trim(),
           apiKey: runtimeSettings.apiKey,
           modelName: runtimeSettings.modelName.trim(),
+          requestOptions: runtimeSettings.requestOptions,
           pdfBase64,
           docText: documentText,
           reportProgress
