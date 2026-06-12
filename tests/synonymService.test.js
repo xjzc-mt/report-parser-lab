@@ -30,3 +30,29 @@ test('calculateFieldSimilarity 在存在单位换算规则时将数值型视为�
     0
   );
 });
+
+test('calculateFieldSimilarity 会忽略常见的数值分组格式符号', () => {
+  loadSynonyms([]);
+  loadConversions([]);
+
+  assert.equal(calculateFieldSimilarity('4,056,273', '4056273', 'numeric'), 100);
+  assert.equal(calculateFieldSimilarity('4，056，273', '4056273', 'numeric'), 100);
+  assert.equal(calculateFieldSimilarity('4 056 273', '4056273', 'numeric'), 100);
+  assert.equal(calculateFieldSimilarity('4\u00A0056\u00A0273', '4056273', 'numeric'), 100);
+});
+
+test('calculateFieldSimilarity 会识别括号中的单位简称别名', () => {
+  loadConversions([]);
+  loadSynonyms([
+    { term1: '吉焦', term2: '千兆焦耳(GJ)' }
+  ]);
+
+  assert.equal(calculateFieldSimilarity('吉焦', 'GJ', 'exact'), 100);
+  assert.equal(
+    calculateFieldSimilarity('4,056,273', '4056273', 'numeric', false, null, {
+      leftUnit: '吉焦',
+      rightUnit: 'GJ'
+    }),
+    100
+  );
+});

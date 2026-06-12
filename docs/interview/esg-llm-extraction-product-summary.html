@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ESG 报告指标抽取与 LLM Lab 提效工具项目总结</title>
+  <style>
+    :root {
+      --ink: #152033;
+      --muted: #607089;
+      --line: #dfe5ee;
+      --panel: #f7f9fc;
+      --panel-strong: #eef3f8;
+      --blue: #1f6feb;
+      --green: #0b7a53;
+      --amber: #a46200;
+      --red: #b42318;
+      --paper: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #f2f5f9;
+      font-family: "Avenir Next", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.72;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      background: var(--paper);
+      min-height: 100vh;
+      box-shadow: 0 24px 80px rgba(35, 50, 78, 0.16);
+    }
+
+    header {
+      padding: 54px 64px 40px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(135deg, rgba(31, 111, 235, 0.08), rgba(11, 122, 83, 0.07)),
+        #fff;
+    }
+
+    .eyebrow {
+      margin: 0 0 14px;
+      color: var(--blue);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 920px;
+      font-size: 42px;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 20px 0 0;
+      max-width: 900px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 34px;
+    }
+
+    .meta {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.72);
+      padding: 16px;
+      border-radius: 8px;
+    }
+
+    .meta b {
+      display: block;
+      font-size: 20px;
+      line-height: 1.2;
+    }
+
+    .meta span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 12px 64px;
+      background: rgba(255, 255, 255, 0.94);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(12px);
+    }
+
+    nav a {
+      white-space: nowrap;
+      color: #31445f;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 11px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+    }
+
+    nav a:hover {
+      border-color: var(--line);
+      background: var(--panel);
+    }
+
+    main {
+      padding: 46px 64px 72px;
+    }
+
+    section {
+      margin: 0 0 54px;
+    }
+
+    h2 {
+      margin: 0 0 18px;
+      font-size: 28px;
+      line-height: 1.25;
+    }
+
+    h3 {
+      margin: 28px 0 10px;
+      font-size: 19px;
+      line-height: 1.35;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    ul,
+    ol {
+      margin: 10px 0 0;
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    .lead {
+      font-size: 18px;
+      color: #24344c;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 20px;
+      background: var(--paper);
+    }
+
+    .card.soft {
+      background: var(--panel);
+    }
+
+    .card h3 {
+      margin-top: 0;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 10px;
+      color: #24415f;
+      background: #e8f0fb;
+      border: 1px solid #d5e4f7;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .tag.green {
+      color: #0b5f43;
+      background: #e5f5ee;
+      border-color: #ccebdd;
+    }
+
+    .tag.amber {
+      color: #7a4700;
+      background: #fff3d7;
+      border-color: #f3dfad;
+    }
+
+    .callout {
+      margin: 18px 0;
+      padding: 18px 20px;
+      border-left: 4px solid var(--blue);
+      background: #f4f8ff;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .callout strong {
+      color: var(--blue);
+    }
+
+    .warning {
+      border-left-color: var(--amber);
+      background: #fff8e8;
+    }
+
+    .warning strong {
+      color: var(--amber);
+    }
+
+    .success {
+      border-left-color: var(--green);
+      background: #effaf5;
+    }
+
+    .success strong {
+      color: var(--green);
+    }
+
+    .flow {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 14px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .step .idx {
+      color: var(--blue);
+      font-weight: 900;
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 8px;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 11px 12px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: var(--panel-strong);
+      font-size: 13px;
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: #edf2f7;
+      color: #1d3555;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      overflow: auto;
+      padding: 16px;
+      border-radius: 8px;
+      background: #101827;
+      color: #e8eef8;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .quote {
+      padding: 22px;
+      border-radius: 8px;
+      background: #121a28;
+      color: #e8eef8;
+      font-size: 18px;
+      line-height: 1.7;
+    }
+
+    .quote small {
+      display: block;
+      margin-top: 12px;
+      color: #9fb0c7;
+      font-size: 13px;
+    }
+
+    .timeline {
+      border-left: 2px solid var(--line);
+      padding-left: 20px;
+      margin-left: 6px;
+    }
+
+    .timeline-item {
+      position: relative;
+      margin: 0 0 22px;
+    }
+
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: -27px;
+      top: 8px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--blue);
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--line);
+      margin: 30px 0;
+    }
+
+    .compact-list li {
+      margin: 4px 0;
+    }
+
+    @media (max-width: 860px) {
+      header,
+      main,
+      nav {
+        padding-left: 22px;
+        padding-right: 22px;
+      }
+
+      h1 {
+        font-size: 32px;
+      }
+
+      .meta-grid,
+      .grid-2,
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .step {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .page {
+        box-shadow: none;
+      }
+
+      nav {
+        position: static;
+      }
+
+      section {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <p class="eyebrow">Interview Project Dossier</p>
+      <h1>ESG 报告指标抽取系统与 LLM Lab 提效工具</h1>
+      <p class="subtitle">
+        这份材料用于面试讲述：简历中的生产项目是 ESG 报告信息提取链路，日常研发和质量提升使用
+        <code>~/AiProjects/llm-lab</code> 中的 LLM Lab 提效工具完成 Prompt 实验、模型结果验收、自动优化和成本控制。
+      </p>
+      <div class="meta-grid">
+        <div class="meta">
+          <b>万份级报告</b>
+          <span>上市公司 ESG / 可持续发展 / 社会责任报告批处理场景</span>
+        </div>
+        <div class="meta">
+          <b>500+ 指标</b>
+          <span>覆盖文字型、数值型、货币型、强度型等结构化指标</span>
+        </div>
+        <div class="meta">
+          <b>多模态抽取</b>
+          <span>Gemini 原生 PDF / 图片理解，保留表格、页码和视觉结构</span>
+        </div>
+        <div class="meta">
+          <b>Harness 闭环</b>
+          <span>测试集、标准答案、评测规则、Prompt 优化和成本估算</span>
+        </div>
+      </div>
+    </header>
+
+    <nav>
+      <a href="#positioning">项目定位</a>
+      <a href="#scenarios">使用场景</a>
+      <a href="#users">目标用户</a>
+      <a href="#architecture">系统架构</a>
+      <a href="#tooling">提效工具</a>
+      <a href="#harness">Harness</a>
+      <a href="#efficiency">提效效果</a>
+      <a href="#interview">面试讲法</a>
+      <a href="#upgrade">升级方向</a>
+    </nav>
+
+    <main>
+      <section id="positioning">
+        <h2>一、项目定位</h2>
+        <p class="lead">
+          这个项目不是一个简单的 PDF 解析脚本，而是一套围绕 ESG 报告指标抽取的 LLM 工程化体系。生产项目负责批量处理真实报告，提效工具负责实验、验收、Prompt 优化、成本估算和质量闭环。
+        </p>
+        <div class="grid-2">
+          <div class="card">
+            <h3>简历中的主项目：ESG 报告信息提取</h3>
+            <p>
+              目录位于 <code>/Users/michael_drj/Desktop/报告信息提取/report-parser-product</code>。它包含浏览器端抽取工具、Python 批处理链路、Fast SQL/Hive 入口、Vertex Gemini Batch 两阶段推理，以及 Excel/SQL 输出。
+            </p>
+            <div class="tag-row">
+              <span class="tag">Gemini PDF 直读</span>
+              <span class="tag">PDF 压缩</span>
+              <span class="tag">批量推理</span>
+              <span class="tag">Hive SQL 输入</span>
+              <span class="tag">Excel/接口表输出</span>
+            </div>
+          </div>
+          <div class="card">
+            <h3>日常提效工具：LLM Lab</h3>
+            <p>
+              目录位于 <code>~/AiProjects/llm-lab</code>。它把生产抽取中的调试、验收和优化沉淀成工具化工作台，支持 Prompt 快速迭代、模型结果验收、Prompt 自动优化、线上验证和数据预处理。
+            </p>
+            <div class="tag-row">
+              <span class="tag green">Prompt 快速迭代</span>
+              <span class="tag green">结果验收</span>
+              <span class="tag green">自动优化</span>
+              <span class="tag green">模型预设</span>
+              <span class="tag green">Token 成本</span>
+            </div>
+          </div>
+        </div>
+        <div class="callout">
+          <strong>一句话总结：</strong>
+          生产项目解决“如何把大量 ESG 报告跑起来”，LLM Lab 解决“如何让这件事可实验、可验收、可复盘、可优化、可控成本”。
+        </div>
+      </section>
+
+      <section id="scenarios">
+        <h2>二、使用场景</h2>
+        <div class="flow">
+          <div class="step">
+            <div class="idx">场景 01</div>
+            <div>
+              <h3>批量 ESG 指标抽取</h3>
+              <p>
+                输入上市公司报告 PDF 与指标需求清单，自动抽取指标代码、指标名称、年份、文本值、数值、单位、币种、强度分子/分母单位和物理页码。适用于万份级 ESG 报告的数据生产。
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="idx">场景 02</div>
+            <div>
+              <h3>Prompt 调试与小样本验证</h3>
+              <p>
+                在 LLM Lab 的 Prompt 快速迭代页上传 PDF、图片、Excel、CSV、DOCX 或文本文件，输入系统提示词和用户提示词，快速观察模型原始回复、JSON 解析结果和多文件表现差异。
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="idx">场景 03</div>
+            <div>
+              <h3>模型结果验收</h3>
+              <p>
+                上传 LLM 结果文件和测试集标准答案，配置关联字段，自动识别已匹配、未匹配、幻觉、多结果、严格通过、宽松通过、页码错误、单位错误和数值错误。
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="idx">场景 04</div>
+            <div>
+              <h3>Prompt 自动优化</h3>
+              <p>
+                基于验收差异、PDF 证据切片、基线 Prompt 和验证样本，分析错误原因并生成候选 Prompt。优化结果可以回到快速迭代页面继续验证。
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="idx">场景 05</div>
+            <div>
+              <h3>生产批处理与低成本吞吐</h3>
+              <p>
+                Python 生产链路支持 SQL/Hive 读取报告清单、OSS 下载、PDF 压缩、章节定位、章节 PDF 切片、Vertex Batch 推理、Excel 输出和接口表双写，适合大规模离线任务。
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="idx">场景 06</div>
+            <div>
+              <h3>Token 与成本评估</h3>
+              <p>
+                通过 PDF 压缩、Token 统计、Base64 / 多模态输入估算，评估模型调用成本和输入规模，避免把不必要的全文内容送入强模型。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="users">
+        <h2>三、目标用户</h2>
+        <div class="grid-3">
+          <div class="card soft">
+            <h3>AI 应用工程师</h3>
+            <p>负责模型接入、Prompt 设计、文件输入链路、异常重试、JSON 解析、模型配置和成本控制。</p>
+          </div>
+          <div class="card soft">
+            <h3>数据产品经理</h3>
+            <p>把业务指标体系转成需求清单，关注指标覆盖率、错误分布、复核效率和交付口径。</p>
+          </div>
+          <div class="card soft">
+            <h3>ESG / 金融数据分析师</h3>
+            <p>关注提取结果是否符合业务定义，是否能追溯到报告页码，是否存在幻觉、漏提和单位错配。</p>
+          </div>
+          <div class="card soft">
+            <h3>模型评测团队</h3>
+            <p>维护测试集、标准答案、验收阈值和评测指标，判断模型或 Prompt 升级是否真的有效。</p>
+          </div>
+          <div class="card soft">
+            <h3>数据工程团队</h3>
+            <p>维护 SQL 输入、OSS/GCS 存储、Hive/JDBC 写入、批处理任务和接口表落库。</p>
+          </div>
+          <div class="card soft">
+            <h3>业务交付团队</h3>
+            <p>需要稳定导出 Excel 或接口表，按错误类型复核结果，并把可用数据交给下游系统。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="architecture">
+        <h2>四、系统架构与生产链路</h2>
+        <div class="grid-2">
+          <div>
+            <h3>浏览器端抽取工具</h3>
+            <p>
+              早期产品是 Vite + React 的纯浏览器工具。用户上传 PDF 和 Excel/CSV 需求清单，Gemini 原生读取 PDF，多批次抽取指标，实时展示进度并导出 Excel。
+            </p>
+            <ul>
+              <li>PDF 直接作为多模态输入传给 Gemini，保留表格、图表和版面关系。</li>
+              <li>需求清单包含 <code>indicator_code</code>、<code>indicator_name</code>、<code>value_type</code>、<code>definition</code>、<code>guidance</code>、<code>prompt</code>。</li>
+              <li>结果字段包含文本值、数值、单位、年份、页码、币种和强度单位。</li>
+              <li>前端提供实时进度、日志、结果过滤和 Excel 导出。</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Python 生产批处理链路</h3>
+            <p>
+              生产链路进一步支持 SQL/Hive 输入、OSS 下载、PDF 压缩、异步并发、全局 API semaphore、结果双写和批量插入，解决真实批量处理的吞吐问题。
+            </p>
+            <ul>
+              <li>单 PDF 内部批次异步并发，多 PDF 并行处理。</li>
+              <li>支持原生 Gemini 与 OpenAI 兼容网关。</li>
+              <li>保留原版 Prompt、指标映射和导出规则。</li>
+              <li>原始结果表与清洗后的接口表同批次双写。</li>
+            </ul>
+          </div>
+        </div>
+
+        <h3>Vertex Batch 两阶段流程</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>阶段</th>
+              <th>核心动作</th>
+              <th>解决的问题</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Stage 0：准备</td>
+              <td>从 Hive SQL 读取 PDF 列表，下载 OSS PDF，压缩后上传 GCS。</td>
+              <td>统一输入来源，降低 PDF 大小，保证后续 Batch 可处理。</td>
+            </tr>
+            <tr>
+              <td>Stage 1：章节定位</td>
+              <td>生成带 <code>PHYSICAL_PAGE: N</code> 标记的定位 PDF，提交 Vertex Gemini Batch 做分组页码定位。</td>
+              <td>先找到指标相关章节，避免每个指标都看全文。</td>
+            </tr>
+            <tr>
+              <td>Stage 2：指标抽取</td>
+              <td>根据 Stage 1 定位结果切分章节 PDF，生成指标抽取 JSONL，再提交第二阶段 Batch。</td>
+              <td>缩小上下文，提高抽取稳定性并降低成本。</td>
+            </tr>
+            <tr>
+              <td>Stage 3：结果落地</td>
+              <td>解析预测结果，输出 Excel，并可写入原始结果表和接口结果表。</td>
+              <td>把模型输出转换成可交付的数据资产。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="tooling">
+        <h2>五、LLM Lab 提效工具如何支撑主项目</h2>
+        <p class="lead">
+          LLM Lab 不是替代生产抽取链路，而是服务于生产链路的研发、评测、调试和优化工作台。
+        </p>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Prompt 快速迭代</h3>
+            <p>
+              支持 PDF、图片、Excel、CSV、DOCX、文本等多输入源。PDF 和图片走多模态直传，表格和文本转上下文输入。页面展示原始回复和 JSON 自动解析结果，保留运行历史。
+            </p>
+          </div>
+          <div class="card">
+            <h3>模型结果验收</h3>
+            <p>
+              上传 LLM 结果和标准答案，按 report、indicator、value_type 等关联字段匹配，计算相似度、错误分类、幻觉、漏提、多结果和导出文件。
+            </p>
+          </div>
+          <div class="card">
+            <h3>Prompt 自动优化</h3>
+            <p>
+              读取验收差异、PDF 证据、基线 Prompt 和样本配置，生成可解释的优化候选，支持历史记录、下载和结果审查。
+            </p>
+          </div>
+          <div class="card">
+            <h3>数据预处理</h3>
+            <p>
+              支持 Chunking 测试、PDF 压缩、Token 统计和压缩后 Base64 token 估算，用于判断是否需要切片、压缩或换模型。
+            </p>
+          </div>
+          <div class="card">
+            <h3>模型预设系统</h3>
+            <p>
+              支持 Gemini、OpenAI、Claude、DeepSeek、GLM、OneAPI 和 OpenAI-compatible 接口。页面选择预设名称，不直接暴露 API Key。
+            </p>
+          </div>
+          <div class="card">
+            <h3>Prompt 资产库</h3>
+            <p>
+              把 Prompt 从临时文本提升为可维护资产，支持指标绑定、版本选择、写入新版本、避免无变化重复写入，并与快速迭代和自动优化联动。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="harness">
+        <h2>六、Harness 应用</h2>
+        <p>
+          面试中可以把 harness 解释为“LLM 应用的实验夹具和评测夹具”：固定输入、标准答案、模型配置、比对规则和输出指标，让不同 Prompt、模型、文件和技术路线可以公平比较。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Harness 类型</th>
+              <th>固定内容</th>
+              <th>输出内容</th>
+              <th>价值</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Prompt Iteration Harness</td>
+              <td>输入文件、目标指标、Prompt、模型预设、页码范围。</td>
+              <td>原始回复、JSON 解析、文件级结果、token 消耗、历史记录。</td>
+              <td>让 Prompt 调试从临时试错变成可复现实验。</td>
+            </tr>
+            <tr>
+              <td>Evaluation Harness</td>
+              <td>测试集、LLM 结果、关联字段、同义词、单位换算、阈值。</td>
+              <td>严格通过、宽松通过、幻觉、漏提、重复、页码命中、单位/数值错误。</td>
+              <td>把“模型好不好”转成可计算、可导出的质量指标。</td>
+            </tr>
+            <tr>
+              <td>Optimization Harness</td>
+              <td>基线 Prompt、错误样本、PDF 证据、训练/验证样本、目标阈值。</td>
+              <td>候选 Prompt、优化理由、每轮得分、历史运行、下载结果。</td>
+              <td>防止自动优化变成黑盒，保证每轮变化可复盘。</td>
+            </tr>
+            <tr>
+              <td>Cost Harness</td>
+              <td>文件、模型、token 估算规则、PDF 压缩参数、页码切片策略。</td>
+              <td>输入 token、输出 token、压缩后体积、估算成本。</td>
+              <td>在质量和成本之间做工程权衡。</td>
+            </tr>
+            <tr>
+              <td>Route Harness</td>
+              <td>同一批样本、不同技术路线：多模态直读、OCR、RAG、纯文本。</td>
+              <td>质量、成本、吞吐、失败模式对比。</td>
+              <td>未来用于决定不同场景走哪条技术路线。</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="success callout">
+          <strong>面试表达重点：</strong>
+          这个项目里的 harness 不是测试脚本，而是 LLM 工程链路中的可重复实验环境。它把 Prompt、模型、输入文件、验收逻辑和成本口径固定下来，使迭代结果可以被比较。
+        </div>
+      </section>
+
+      <section id="efficiency">
+        <h2>七、提效效果与量化口径</h2>
+        <p>
+          面试时不要空泛说“提升很多”，更好的讲法是说明提效发生在哪些环节，以及如何量化。
+        </p>
+        <div class="grid-2">
+          <div class="card">
+            <h3>人工阅读提效</h3>
+            <p>从“人工逐页阅读报告”变成“模型批量抽取 + 人工复核异常样本”。</p>
+            <ul class="compact-list">
+              <li>可量化口径：人工阅读页数减少比例。</li>
+              <li>可量化口径：每份报告人工复核耗时。</li>
+              <li>可量化口径：低分样本占比和复核优先级。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Prompt 迭代提效</h3>
+            <p>从“手工粘贴 Prompt 看结果”变成“多文件、多版本、可保存历史的实验台”。</p>
+            <ul class="compact-list">
+              <li>可量化口径：每次 Prompt 修改后的验证时间。</li>
+              <li>可量化口径：同一 Prompt 覆盖文件数。</li>
+              <li>可量化口径：历史版本回溯和复用次数。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>结果验收提效</h3>
+            <p>从“人工抽查部分结果”变成“测试集全量对比 + 错误分类”。</p>
+            <ul class="compact-list">
+              <li>可量化口径：自动完成比对的样本数。</li>
+              <li>可量化口径：幻觉、漏提、单位错误、页码错误数量。</li>
+              <li>可量化口径：严格通过率、宽松通过率变化。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>批处理吞吐提效</h3>
+            <p>从单文件串行处理升级为多 PDF 并行、单 PDF 内部批次并发、Vertex Batch 离线推理。</p>
+            <ul class="compact-list">
+              <li>可量化口径：每小时处理报告数。</li>
+              <li>可量化口径：Batch 任务完成时间。</li>
+              <li>可量化口径：失败重试率和恢复成本。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>成本控制提效</h3>
+            <p>通过章节定位、PDF 切片、压缩和 token 估算，减少无效上下文输入。</p>
+            <ul class="compact-list">
+              <li>可量化口径：压缩前后 PDF 大小。</li>
+              <li>可量化口径：全文输入 vs 章节切片输入 token 差异。</li>
+              <li>可量化口径：每条有效指标的模型成本。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>质量定位提效</h3>
+            <p>错误不再只是“结果不对”，而是被拆解为数值、单位、页码、证据、幻觉、漏提等原因。</p>
+            <ul class="compact-list">
+              <li>可量化口径：错误类型分布。</li>
+              <li>可量化口径：单指标跨报告失败率。</li>
+              <li>可量化口径：优化前后同类错误下降情况。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="details">
+        <h2>八、关键工程细节</h2>
+        <h3>1. 多模态 PDF 直读的必要性</h3>
+        <p>
+          ESG 报告中大量指标证据存在于表格、图表、扫描页、颜色图例、脚注和跨页版式里。纯文本解析可能丢失表头、单位列、年份列、脚注归属和图例关系。Gemini 多模态直读可以直接利用原始页面视觉信息，适合复杂 PDF 证据理解。
+        </p>
+        <h3>2. 章节定位再抽取</h3>
+        <p>
+          生产 Batch 版本不是对每个指标直接喂全文，而是先做章节定位，再切出相关章节 PDF 进入第二阶段抽取。这个设计降低上下文噪声，也控制模型成本。
+        </p>
+        <h3>3. 物理页码而非印刷页码</h3>
+        <p>
+          输出要求使用 PDF 物理页码，这样可以在复核时直接定位文件页。生产链路还会构造带 <code>PHYSICAL_PAGE: N</code> 标记的定位 PDF，减少页码漂移。
+        </p>
+        <h3>4. 数值、单位和同义词验收</h3>
+        <p>
+          结构化抽取不是只比较文本。验收层需要处理 <code>4,056,273</code> 与 <code>4056273</code> 的数值格式差异，也需要通过 <code>synonyms.xlsx</code> 和 <code>conversion.xlsx</code> 处理单位别名与单位换算。
+        </p>
+        <h3>5. Prompt 资产化</h3>
+        <p>
+          Prompt 被维护成带版本的资产，而不是页面里的临时文本。快速迭代、自动优化和验收结果可以围绕同一个指标 Prompt 形成闭环。
+        </p>
+        <h3>6. 模型预设与能力标签</h3>
+        <p>
+          LLM Lab 中模型预设只描述供应商、接口、模型名、API Key 来源、高级请求参数和能力标签，不把 OCR、RAG、页码策略混进模型配置。这样后续扩展技术路线更清晰。
+        </p>
+      </section>
+
+      <section id="interview">
+        <h2>九、面试讲法</h2>
+        <div class="quote">
+          我做过一个 ESG 报告指标抽取项目，核心目标是从大量上市公司 ESG 报告中提取结构化指标。这个场景的难点不是单纯调用大模型，而是报告格式复杂、指标数量多、证据分散在表格和图表里，并且结果必须能验收、能追溯、能批量交付。
+          <small>开场 30 秒版本</small>
+        </div>
+
+        <h3>完整项目叙述</h3>
+        <p>
+          项目最初是一个浏览器端抽取工具，用户上传 PDF 报告和 Excel 指标需求表，模型直接读取 PDF 并输出结构化结果。后续为了支撑批量生产，我又把它扩展为 Python 批处理链路：从 Hive SQL 读取待处理报告，从 OSS 下载 PDF，压缩后上传到 GCS，通过 Vertex Gemini Batch 做两阶段处理。第一阶段做章节定位，第二阶段按章节 PDF 抽取指标，最后输出 Excel 并写入原始结果表和接口表。
+        </p>
+        <p>
+          同时，我在 <code>~/AiProjects/llm-lab</code> 维护了一个 LLM Lab 提效工具，用于支撑这个项目的研发和质量闭环。它包括 Prompt 快速迭代、模型结果验收、Prompt 自动优化、线上验证和数据预处理。这样 Prompt 改动、模型切换、指标验收、错误分析和成本估算都能在工具里完成，而不是靠手工调试。
+        </p>
+
+        <h3>面试官可能追问</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>问题</th>
+              <th>回答方向</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>为什么不是写一个脚本批量跑？</td>
+              <td>脚本只能解决一次运行，不能解决 Prompt 版本、结果验收、错误分类、质量回归和成本控制。这个平台解决的是 LLM 应用研发的闭环。</td>
+            </tr>
+            <tr>
+              <td>为什么用多模态模型？</td>
+              <td>ESG 报告中大量证据在表格、图表、扫描页、图例和脚注里。多模态模型能直接看原始页面。生产上可以结合 OCR/RAG 做降本，但复杂证据理解需要多模态兜底。</td>
+            </tr>
+            <tr>
+              <td>怎么证明 Prompt 变好了？</td>
+              <td>用测试集和验收 harness 固定输入、标准答案、关联字段、相似度规则和阈值，比较严格通过率、宽松通过率、幻觉率、漏提率、页码命中率等指标。</td>
+            </tr>
+            <tr>
+              <td>最难的工程问题是什么？</td>
+              <td>最难的是质量验收和规模化稳定性。结构化指标需要同时保证数值、单位、年份、页码、文本证据正确，还要处理幻觉、漏提、多结果、单位换算和页码漂移。</td>
+            </tr>
+            <tr>
+              <td>这个工具怎么提效？</td>
+              <td>它把全量人工阅读转成异常复核，把手工 Prompt 调试转成可重复实验，把主观抽查转成全量指标验收，把全文输入转成定位和切片后的低成本输入。</td>
+            </tr>
+            <tr>
+              <td>后续怎么做得更先进？</td>
+              <td>引入运行图 Run Trace、多 Agent Prompt 优化、技术路线注册表、多线上环境和评测指标插件化，让平台从 ESG 工具升级为通用 LLMOps 实验平台。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="upgrade">
+        <h2>十、后续升级方向</h2>
+        <div class="timeline">
+          <div class="timeline-item">
+            <h3>1. Run Trace 运行图</h3>
+            <p>
+              每次运行记录输入文件、解析结果、页码切片、模型请求、模型回复、JSON 解析、验收结果、token、耗时和错误信息。这样所有实验都可回放。
+            </p>
+          </div>
+          <div class="timeline-item">
+            <h3>2. 多 Agent Prompt 优化</h3>
+            <p>
+              把自动优化拆成诊断 Agent、证据核验 Agent、Prompt 改写 Agent、验证 Agent 和裁判 Agent，但每个 Agent 都必须有固定输入输出 schema，不能自由游走。
+            </p>
+          </div>
+          <div class="timeline-item">
+            <h3>3. 技术路线注册表</h3>
+            <p>
+              把 PDF 多模态直读、OCR 转文本、OCR + RAG、Excel / 纯文本等路线显式化。模型预设只管模型连接，技术路线负责执行链路。
+            </p>
+          </div>
+          <div class="timeline-item">
+            <h3>4. 多线上环境</h3>
+            <p>
+              线上验证工作台升级成环境列表，每个环境绑定任务类型、技术路线、模型预设、Prompt 版本、运行参数和验收方案。
+            </p>
+          </div>
+          <div class="timeline-item">
+            <h3>5. 评测指标插件化</h3>
+            <p>
+              抽取任务关注幻觉、漏提、页码命中和字段相似度；分类任务关注 Accuracy、Precision、Recall、F1；生成任务关注 schema 通过率和字段完整率。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="closing">
+        <h2>十一、最终总结</h2>
+        <div class="quote">
+          这个项目可以概括为：从 ESG 报告指标抽取场景出发，构建了一套包含多模态 PDF 理解、批量推理、结构化输出、结果验收、Prompt 资产管理、自动优化和成本估算的 LLM 工程化闭环。生产链路负责规模化处理，LLM Lab 提效工具负责实验、评测和优化，使大模型抽取任务从“手工调 Prompt + 主观看结果”变成“可复现、可验收、可优化、可上线验证”的工程体系。
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

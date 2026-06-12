@@ -12,7 +12,7 @@ import {
   savePromptIterationHistory
 } from '../services/persistenceService.js';
 import { resolveSettingsWithPlatformDefaults } from '../utils/platformDefaultModel.js';
-import { buildPromptAssetSelectOptions } from '../utils/promptIterationModel.js';
+import { buildPromptAssetSelectOptions, detectPromptIterationFileKind } from '../utils/promptIterationModel.js';
 import {
   runPromptIteration,
   clipPromptIterationHistory,
@@ -65,6 +65,16 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
   const [errorMsg, setErrorMsg] = useState('');
   const [hasHydrated, setHasHydrated] = useState(false);
   const [progress, setProgress] = useState(createInitialProgress);
+  const hasMultimodalBinaryFiles = useMemo(
+    () => draft.files.some((item) => ['pdf', 'image'].includes(detectPromptIterationFileKind(item))),
+    [draft.files]
+  );
+  const requiredCapabilities = useMemo(
+    () => (hasMultimodalBinaryFiles
+      ? PAGE_REQUIRED_CAPABILITIES[MODEL_PAGE_KEYS.PROMPT_ITERATION]
+      : { supportsJsonMode: true }),
+    [hasMultimodalBinaryFiles]
+  );
 
   const selectedPreset = useMemo(
     () => resolvePagePreset(
@@ -112,6 +122,7 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
     () => supportsPromptIterationPdfProvider(effectiveLlmSettings),
     [effectiveLlmSettings]
   );
+  const requiresPdfUpload = hasMultimodalBinaryFiles;
 
   useEffect(() => {
     let isCancelled = false;
@@ -156,7 +167,7 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
     setDraft((previous) => normalizePromptIterationDraft({
       ...previous,
       ...vm.incomingPromptIterationSeed
-    }));
+    }, { preserveFiles: true }));
     setCurrentRun(null);
     setActiveResultTab('current');
     setErrorMsg('');
@@ -179,7 +190,7 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
     effectiveLlmSettings.apiKey &&
     effectiveLlmSettings.modelName &&
     effectiveLlmSettings.apiUrl &&
-    supportsPdfUpload &&
+    (!requiresPdfUpload || supportsPdfUpload) &&
     !isRunning
   );
   const canSavePromptAsset = Boolean(
@@ -287,7 +298,7 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
         promptAssetId: result.asset.id,
         promptVersionId: result.version?.id || previous.promptVersionId,
         promptIndicatorCode: result.asset.indicatorCode || previous.promptIndicatorCode
-      }));
+      }, { preserveFiles: true }));
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : String(error));
     } finally {
@@ -322,7 +333,7 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
           presets={modelPresets}
           preset={selectedPreset}
           value={selectedPreset?.id || selectedPresetId}
-          requiredCapabilities={PAGE_REQUIRED_CAPABILITIES[MODEL_PAGE_KEYS.PROMPT_ITERATION]}
+          requiredCapabilities={requiredCapabilities}
           usesGlobalDefault={!selectedPresetId}
           onChange={(presetId) => {
             setSelectedPresetId(presetId);
@@ -339,7 +350,7 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
 
       {missingFileCount > 0 ? (
         <div className="prompt-iteration-hint-banner">
-          已恢复 {missingFileCount} 条文件配置，但浏览器未保留对应 PDF 句柄。重新上传后才能继续运行。
+          已恢复 {missingFileCount} 条文件配置，但浏览器未保留对应文件句柄。重新上传后才能继续运行。
         </div>
       ) : null}
 
@@ -349,7 +360,7 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
         </div>
       ) : null}
 
-      {!supportsPdfUpload ? (
+      {requiresPdfUpload && !supportsPdfUpload ? (
         <div className="prompt-iteration-hint-banner warning">
           当前 Prompt 快速迭代要求 PDF 直传能力。请切换到支持该能力的模型预设后再运行。
         </div>
@@ -360,6 +371,7 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
         onDraftChange={setDraft}
         llmSettings={effectiveLlmSettings}
         presetName={selectedPreset?.name}
+        requiresPdfUpload={requiresPdfUpload}
         supportsPdfUpload={supportsPdfUpload}
         promptAssetOptions={promptAssetOptions}
         promptVersionOptions={promptVersionOptions}
@@ -376,7 +388,7 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
             promptAssetId: entry?.asset?.id || '',
             promptVersionId: version?.id || '',
             promptIndicatorCode: entry?.asset?.indicatorCode || ''
-          }));
+          }, { preserveFiles: true }));
         }}
         onSelectPromptVersion={(versionId) => {
           const version = selectedPromptAssetEntry?.versions?.find((item) => item.id === versionId) || null;
@@ -386,7 +398,7 @@ export function FullFlowMode({ vm, modelPresets = [], globalDefaultPresetId = ''
             userPrompt: version?.userPromptTemplate || previous.userPrompt,
             promptVersionId: version?.id || '',
             promptIndicatorCode: selectedPromptAssetEntry?.asset?.indicatorCode || previous.promptIndicatorCode
-          }));
+          }, { preserveFiles: true }));
         }}
         onOpenPromptAssetLibrary={vm?.onOpenPromptAssetLibrary}
         onSavePromptAsset={handleSavePromptAsset}

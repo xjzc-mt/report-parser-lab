@@ -2,6 +2,30 @@
 let synonymMap = new Map();
 let conversionMap = new Map();
 
+function linkSynonymPair(left, right) {
+  if (!left || !right || left === right) return;
+  if (!synonymMap.has(left)) synonymMap.set(left, new Set());
+  if (!synonymMap.has(right)) synonymMap.set(right, new Set());
+  synonymMap.get(left).add(right);
+  synonymMap.get(right).add(left);
+}
+
+function expandTermAliases(term) {
+  const raw = String(term || '').trim();
+  if (!raw) return [];
+
+  const aliases = new Set([raw]);
+  const bracketMatch = raw.match(/^(.*?)[(（]([^()（）]+)[)）]\s*$/);
+  if (bracketMatch) {
+    const base = String(bracketMatch[1] || '').trim();
+    const inner = String(bracketMatch[2] || '').trim();
+    if (base) aliases.add(base);
+    if (inner) aliases.add(inner);
+  }
+
+  return Array.from(aliases);
+}
+
 /**
  * 加载同义词映射表
  * @param {Array<{term1: string, term2: string}>} rows - Excel 解析后的行数据
@@ -12,12 +36,26 @@ export function loadSynonyms(rows) {
     const t1 = String(row.term1 || '').trim();
     const t2 = String(row.term2 || '').trim();
     if (!t1 || !t2) continue;
+    const aliases1 = expandTermAliases(t1);
+    const aliases2 = expandTermAliases(t2);
 
-    // 双向映射
-    if (!synonymMap.has(t1)) synonymMap.set(t1, new Set());
-    if (!synonymMap.has(t2)) synonymMap.set(t2, new Set());
-    synonymMap.get(t1).add(t2);
-    synonymMap.get(t2).add(t1);
+    for (const left of aliases1) {
+      for (const right of aliases2) {
+        linkSynonymPair(left, right);
+      }
+    }
+
+    for (let index = 0; index < aliases1.length; index += 1) {
+      for (let cursor = index + 1; cursor < aliases1.length; cursor += 1) {
+        linkSynonymPair(aliases1[index], aliases1[cursor]);
+      }
+    }
+
+    for (let index = 0; index < aliases2.length; index += 1) {
+      for (let cursor = index + 1; cursor < aliases2.length; cursor += 1) {
+        linkSynonymPair(aliases2[index], aliases2[cursor]);
+      }
+    }
   }
 }
 
@@ -38,7 +76,9 @@ export function loadConversions(rows) {
 }
 
 function normalizeNumericString(value) {
-  return String(value || '').trim().replace(/,/g, '');
+  return String(value || '')
+    .trim()
+    .replace(/[,\uFF0C\u00A0\u202F\s']/g, '');
 }
 
 function parseNumericValue(value) {

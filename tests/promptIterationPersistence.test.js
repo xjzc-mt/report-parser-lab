@@ -70,11 +70,11 @@ test('PromptIteration draft 文件删除后会清理孤儿 PDF 记录', async ()
   await savePromptIterationDraftFiles([
     { id: 'file-cleanup', name: 'B.pdf', type: 'application/pdf', pageSpec: '', file }
   ]);
-  assert.equal((await listFiles('prompt_iteration_pdf')).some((item) => item.id === 'prompt_iteration__file-cleanup'), true);
+  assert.equal((await listFiles()).some((item) => item.id === 'prompt_iteration__file-cleanup'), true);
 
   await savePromptIterationDraftFiles([]);
 
-  assert.equal((await listFiles('prompt_iteration_pdf')).some((item) => item.id === 'prompt_iteration__file-cleanup'), false);
+  assert.equal((await listFiles()).some((item) => item.id === 'prompt_iteration__file-cleanup'), false);
 });
 
 test('PromptIteration history 默认空数组且可覆盖保存', async () => {

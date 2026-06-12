@@ -241,7 +241,8 @@ const VALIDATION_KEY = 'validation_comparison';
 const VALIDATION_FIELD_MAPPINGS_KEY = 'validation_field_mappings';
 const PROMPT_ITERATION_DRAFT_KEY = 'prompt_iteration_draft';
 const PROMPT_ITERATION_HISTORY_KEY = 'prompt_iteration_history';
-const PROMPT_ITERATION_FILE_TYPE = 'prompt_iteration_pdf';
+const PROMPT_ITERATION_FILE_TYPE = 'prompt_iteration_file';
+const LEGACY_PROMPT_ITERATION_FILE_TYPE = 'prompt_iteration_pdf';
 const PROMPT_ITERATION_FILE_PREFIX = 'prompt_iteration__';
 const PROMPT_OPTIMIZATION_WORKSPACE_KEY = 'prompt_optimization_workspace';
 const PROMPT_OPTIMIZATION_STRATEGY_KEY = 'prompt_optimization_strategy';
@@ -314,7 +315,9 @@ export async function getPromptIterationDraft() {
 
 export async function savePromptIterationDraftFiles(files) {
   const currentFiles = Array.isArray(files) ? files : [];
-  const existingRecords = await listFiles(PROMPT_ITERATION_FILE_TYPE);
+  const existingRecords = (await listFiles()).filter((item) => (
+    item?.id && String(item.id).startsWith(PROMPT_ITERATION_FILE_PREFIX)
+  ));
   const recordById = new Map(existingRecords.map((item) => [item.id, item]));
   const expectedIds = new Set(currentFiles.map((item) => getPromptIterationFileStorageId(item?.id || '')));
 
@@ -336,7 +339,7 @@ export async function savePromptIterationDraftFiles(files) {
     if (
       existing &&
       existing.name === file.name &&
-      existing.type === PROMPT_ITERATION_FILE_TYPE &&
+      [PROMPT_ITERATION_FILE_TYPE, LEGACY_PROMPT_ITERATION_FILE_TYPE, file.type || 'application/octet-stream'].includes(existing.type) &&
       existing.lastModified === (file.lastModified ?? null) &&
       existing.size === file.size
     ) {
@@ -344,7 +347,7 @@ export async function savePromptIterationDraftFiles(files) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    await saveFile(storageId, file.name, PROMPT_ITERATION_FILE_TYPE, arrayBuffer, file.lastModified ?? null);
+    await saveFile(storageId, file.name, file.type || 'application/octet-stream', arrayBuffer, file.lastModified ?? null);
   }));
 }
 
@@ -363,9 +366,17 @@ export async function restorePromptIterationDraftFiles(rawDraft) {
     return {
       ...item,
       name: item.name || record.name || '',
-      type: item.type || 'application/pdf',
+      type: item.type || (
+        record.type && record.type !== PROMPT_ITERATION_FILE_TYPE && record.type !== LEGACY_PROMPT_ITERATION_FILE_TYPE
+          ? record.type
+          : 'application/pdf'
+      ),
       file: new File([record.data], record.name || item.name || 'restored.pdf', {
-        type: 'application/pdf',
+        type: item.type || (
+          record.type && record.type !== PROMPT_ITERATION_FILE_TYPE && record.type !== LEGACY_PROMPT_ITERATION_FILE_TYPE
+            ? record.type
+            : 'application/pdf'
+        ),
         lastModified: typeof record.lastModified === 'number' ? record.lastModified : Date.now()
       })
     };

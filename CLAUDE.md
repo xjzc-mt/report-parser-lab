@@ -1,4 +1,4 @@
-# CLAUDE.md
+# LLM Lab (llm-lab)
 
 本文件为 Claude Code 在此代码库中工作时提供指引。
 

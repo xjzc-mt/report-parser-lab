@@ -2,8 +2,74 @@ import { estimateTextTokens } from './tokenEstimation.js';
 
 export const DRAFT_PROMPT_ASSET_OPTION_VALUE = '__draft_prompt_asset__';
 
+const SPREADSHEET_MIME_TYPES = new Set([
+  'text/csv',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+]);
+
+const TEXT_MIME_TYPES = new Set([
+  'text/plain',
+  'text/markdown',
+  'application/json',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/xml',
+  'text/xml'
+]);
+
+const IMAGE_MIME_PREFIX = 'image/';
+
 function normalizePromptAssetOptionText(value) {
   return String(value || '').trim();
+}
+
+export function detectPromptIterationFileKind(input) {
+  const name = String(input?.name || input?.file?.name || '').trim().toLowerCase();
+  const type = String(input?.type || input?.file?.type || '').trim().toLowerCase();
+
+  if (type === 'application/pdf' || name.endsWith('.pdf')) {
+    return 'pdf';
+  }
+
+  if (
+    SPREADSHEET_MIME_TYPES.has(type) ||
+    name.endsWith('.xlsx') ||
+    name.endsWith('.xls') ||
+    name.endsWith('.csv')
+  ) {
+    return 'spreadsheet';
+  }
+
+  if (
+    TEXT_MIME_TYPES.has(type) ||
+    (type.startsWith('text/') && type !== 'text/csv') ||
+    name.endsWith('.docx') ||
+    name.endsWith('.txt') ||
+    name.endsWith('.md') ||
+    name.endsWith('.json') ||
+    name.endsWith('.yaml') ||
+    name.endsWith('.yml') ||
+    name.endsWith('.xml') ||
+    name.endsWith('.html') ||
+    name.endsWith('.htm') ||
+    name.endsWith('.log')
+  ) {
+    return 'text';
+  }
+
+  if (
+    type.startsWith(IMAGE_MIME_PREFIX) ||
+    name.endsWith('.png') ||
+    name.endsWith('.jpg') ||
+    name.endsWith('.jpeg') ||
+    name.endsWith('.webp') ||
+    name.endsWith('.gif') ||
+    name.endsWith('.bmp')
+  ) {
+    return 'image';
+  }
+
+  return 'unsupported';
 }
 
 export function buildPromptAssetSelectOptions(entries = [], draft = {}, options = {}) {

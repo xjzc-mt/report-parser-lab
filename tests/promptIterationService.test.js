@@ -207,6 +207,167 @@ test('runPromptIteration 非 Gemini provider 会直接拒绝运行 PDF 实验', 
   assert.equal(llmCallCount, 0);
 });
 
+test('runPromptIteration 文本文件可直接走纯文本模型', async () => {
+  const llmCalls = [];
+
+  const result = await runPromptIteration({
+    name: '环保创新技术',
+    systemPrompt: '只返回 JSON',
+    userPrompt: '从输入内容中提取目标信息',
+    files: [{ id: 'a', file: { name: 'notes.txt' }, type: 'text/plain' }],
+    llmSettings: {
+      apiUrl: 'https://api.openai.example.com/v1',
+      apiKey: 'k',
+      modelName: 'gpt-4.1',
+      providerType: 'openai'
+    }
+  }, {
+    readTextFile: async () => '这里是待提取的文本内容',
+    callLLMWithRetry: async (payload) => {
+      llmCalls.push(payload);
+      return {
+        text: '{"ok":true}',
+        usage: { input_tokens: 9, output_tokens: 3 }
+      };
+    },
+    now: () => 4000
+  });
+
+  assert.equal(result.results[0].status, 'success');
+  assert.equal(result.results[0].scopeLabel, '全文文本');
+  assert.equal(result.results[0].jsonParseStatus, 'success');
+  assert.equal(llmCalls.length, 1);
+  assert.equal(llmCalls[0].pdfBase64, undefined);
+  assert.match(llmCalls[0].userPrompt, /提取目标：环保创新技术/);
+  assert.match(llmCalls[0].userPrompt, /这里是待提取的文本内容/);
+});
+
+test('runPromptIteration 表格文件可转成文本上下文后运行', async () => {
+  const llmCalls = [];
+
+  const result = await runPromptIteration({
+    name: '温室气体排放',
+    systemPrompt: '只返回 JSON',
+    userPrompt: '读取表格并提取目标信息',
+    files: [{ id: 'sheet-1', file: { name: 'data.xlsx' }, type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }],
+    llmSettings: {
+      apiUrl: 'https://api.openai.example.com/v1',
+      apiKey: 'k',
+      modelName: 'gpt-4.1',
+      providerType: 'openai'
+    }
+  }, {
+    parseSpreadsheetFile: async () => [
+      { 指标: '温室气体排放', 数值: '123', 单位: '吨' },
+      { 指标: '总能耗', 数值: '456', 单位: 'MWh' }
+    ],
+    callLLMWithRetry: async (payload) => {
+      llmCalls.push(payload);
+      return {
+        text: '{"rows":1}',
+        usage: { input_tokens: 11, output_tokens: 4 }
+      };
+    },
+    now: () => 5000
+  });
+
+  assert.equal(result.results[0].status, 'success');
+  assert.equal(result.results[0].scopeLabel, '整表');
+  assert.equal(llmCalls.length, 1);
+  assert.equal(llmCalls[0].pdfBase64, undefined);
+  assert.match(llmCalls[0].userPrompt, /文件名：data\.xlsx/);
+  assert.match(llmCalls[0].userPrompt, /温室气体排放/);
+  assert.match(llmCalls[0].userPrompt, /总能耗/);
+});
+
+test('runPromptIteration docx 文件可转成文本上下文后运行', async () => {
+  const llmCalls = [];
+
+  const result = await runPromptIteration({
+    name: '供应链管理',
+    systemPrompt: '只返回 JSON',
+    userPrompt: '读取文档并提取目标信息',
+    files: [{ id: 'docx-1', file: { name: 'brief.docx' }, type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }],
+    llmSettings: {
+      apiUrl: 'https://api.openai.example.com/v1',
+      apiKey: 'k',
+      modelName: 'gpt-4.1',
+      providerType: 'openai'
+    }
+  }, {
+    parseDocxFile: async () => '这是从 DOCX 中解析出的正文内容',
+    callLLMWithRetry: async (payload) => {
+      llmCalls.push(payload);
+      return {
+        text: '{"ok":true}',
+        usage: { input_tokens: 10, output_tokens: 3 }
+      };
+    },
+    now: () => 5500
+  });
+
+  assert.equal(result.results[0].status, 'success');
+  assert.equal(result.results[0].scopeLabel, '全文文本');
+  assert.equal(llmCalls.length, 1);
+  assert.match(llmCalls[0].userPrompt, /brief\.docx/);
+  assert.match(llmCalls[0].userPrompt, /DOCX/);
+});
+
+test('runPromptIteration 图片文件会通过 Gemini 多模态附件调用', async () => {
+  const llmCalls = [];
+
+  const result = await runPromptIteration({
+    name: '绿色产品图表',
+    systemPrompt: '只返回 JSON',
+    userPrompt: '读取图片并提取目标信息',
+    files: [{ id: 'img-1', file: { name: 'chart.png' }, type: 'image/png' }],
+    llmSettings: {
+      apiUrl: 'https://example.com',
+      apiKey: 'k',
+      modelName: 'gemini-2.5-pro',
+      providerType: 'gemini'
+    }
+  }, {
+    fileToBase64: async () => 'IMG:BASE64',
+    callLLMWithRetry: async (payload) => {
+      llmCalls.push(payload);
+      return {
+        text: '{"ok":true}',
+        usage: { input_tokens: 12, output_tokens: 4 }
+      };
+    },
+    now: () => 5600
+  });
+
+  assert.equal(result.results[0].status, 'success');
+  assert.equal(result.results[0].scopeLabel, '图片');
+  assert.equal(llmCalls.length, 1);
+  assert.equal(Array.isArray(llmCalls[0].pdfInputs), true);
+  assert.equal(llmCalls[0].pdfInputs[0].mimeType, 'image/png');
+  assert.equal(llmCalls[0].pdfInputs[0].data, 'IMG:BASE64');
+});
+
+test('runPromptIteration 文件列表中包含 PDF 时仍要求支持 PDF 直传', async () => {
+  await assert.rejects(
+    () => runPromptIteration({
+      name: '混合输入',
+      systemPrompt: '只返回 JSON',
+      userPrompt: '提取',
+      files: [
+        { id: 'a', file: { name: 'report.pdf' }, type: 'application/pdf' },
+        { id: 'b', file: { name: 'notes.txt' }, type: 'text/plain' }
+      ],
+      llmSettings: {
+        apiUrl: 'https://api.openai.example.com/v1',
+        apiKey: 'k',
+        modelName: 'gpt-4.1',
+        providerType: 'openai'
+      }
+    }),
+    /仅支持 Gemini PDF 直传/
+  );
+});
+
 test('supportsPromptIterationPdfProvider 仅放行 Gemini PDF 直传 provider', () => {
   assert.equal(
     supportsPromptIterationPdfProvider({
@@ -272,9 +433,30 @@ test('normalizePromptIterationDraft 用默认值补齐草稿', () => {
 
   assert.equal(draft.systemPrompt, '');
   assert.equal(draft.userPrompt, '');
+  assert.equal(draft.inputSource, 'pdf');
   assert.equal(draft.promptAssetId, 'asset_1');
   assert.equal(draft.promptVersionId, 'pver_2');
   assert.equal(draft.promptIndicatorCode, 'E3');
   assert.equal(draft.files[0].pageSpec, '1-2');
   assert.equal(draft.files[0].type, 'application/pdf');
+});
+
+test('normalizePromptIterationDraft 保留输入源与非 PDF 文件类型', () => {
+  const draft = normalizePromptIterationDraft({
+    inputSource: 'text',
+    files: [{ id: 'txt-1', name: 'notes.txt', type: 'text/plain' }]
+  });
+
+  assert.equal(draft.inputSource, 'text');
+  assert.equal(draft.files[0].type, 'text/plain');
+  assert.equal(draft.files[0].pageSpec, '');
+});
+
+test('normalizePromptIterationDraft 在显式要求时保留文件句柄', () => {
+  const file = { name: 'A.pdf', arrayBuffer: async () => new ArrayBuffer(0) };
+  const draft = normalizePromptIterationDraft({
+    files: [{ id: 'pdf-1', name: 'A.pdf', type: 'application/pdf', pageSpec: '1', file }]
+  }, { preserveFiles: true });
+
+  assert.equal(draft.files[0].file, file);
 });

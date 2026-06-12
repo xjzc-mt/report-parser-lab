@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { ActionIcon, Badge, Button, TextInput, Tooltip } from '@mantine/core';
 import { IconHelpCircle, IconTrash, IconUpload } from '@tabler/icons-react';
-import { parsePromptIterationPageSpec } from '../../utils/promptIterationModel.js';
+import { detectPromptIterationFileKind, parsePromptIterationPageSpec } from '../../utils/promptIterationModel.js';
 
 function getFileIdentity(file) {
   return `${file.name}__${file.size}__${file.lastModified}`;
@@ -15,7 +15,7 @@ function createDraftFileItem(file) {
   return {
     id: getFileIdentity(file),
     name: file.name,
-    type: file.type || 'application/pdf',
+    type: file.type || 'application/octet-stream',
     pageSpec: '',
     file
   };
@@ -28,8 +28,19 @@ function formatFileSize(size) {
   return `${(size / 1024 / 1024).toFixed(2)} MB`;
 }
 
-function isPdfFile(file) {
-  return file?.type === 'application/pdf' || file?.name?.toLowerCase().endsWith('.pdf');
+function getFileKindMeta(kind) {
+  switch (kind) {
+    case 'spreadsheet':
+      return { label: '表格', color: 'cyan' };
+    case 'text':
+      return { label: '文本', color: 'grape' };
+    case 'image':
+      return { label: '图片', color: 'orange' };
+    case 'pdf':
+      return { label: 'PDF', color: 'blue' };
+    default:
+      return { label: '未知', color: 'gray' };
+  }
 }
 
 function PageSpecHelp() {
@@ -54,9 +65,9 @@ export function PromptIterationFileList({ draft, onDraftChange, compact = false 
       return;
     }
 
-    const invalidFile = nextFiles.find((file) => !isPdfFile(file));
+    const invalidFile = nextFiles.find((file) => detectPromptIterationFileKind(file) === 'unsupported');
     if (invalidFile) {
-      window.alert(`仅支持上传 PDF 文件：${invalidFile.name}`);
+      window.alert(`暂不支持该文件类型：${invalidFile.name}。当前支持 PDF、Excel/CSV 与常见文本文件。`);
       return;
     }
 
@@ -82,7 +93,7 @@ export function PromptIterationFileList({ draft, onDraftChange, compact = false 
           existing[placeholderIndex] = {
             ...existing[placeholderIndex],
             id: identity,
-            type: file.type || 'application/pdf',
+            type: file.type || existing[placeholderIndex].type || 'application/octet-stream',
             file
           };
         } else {
@@ -154,15 +165,15 @@ export function PromptIterationFileList({ draft, onDraftChange, compact = false 
     >
       <div className="prompt-iteration-files-toolbar">
         <div className="prompt-iteration-files-title">
-          <span className="prompt-iteration-side-title">文件与页码</span>
+          <span className="prompt-iteration-side-title">输入文件</span>
           <Badge variant="light" color="blue" radius="xl">
-            {draft.files.length} 份 PDF
+            {draft.files.length} 份文件
           </Badge>
         </div>
         <input
           ref={inputRef}
           type="file"
-          accept="application/pdf"
+          accept=".pdf,.xlsx,.xls,.csv,.docx,.txt,.md,.json,.yaml,.yml,.xml,.html,.htm,.log,.png,.jpg,.jpeg,.webp,.gif,.bmp,text/plain,text/markdown,application/json,application/xml,text/xml,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,image/png,image/jpeg,image/webp,image/gif,image/bmp"
           multiple
           className="file-input"
           onChange={(event) => {
@@ -177,26 +188,36 @@ export function PromptIterationFileList({ draft, onDraftChange, compact = false 
           leftSection={<IconUpload size={14} />}
           onClick={() => inputRef.current?.click()}
         >
-          添加 PDF
+          添加文件
         </Button>
       </div>
 
       {draft.files.length === 0 ? (
         <div className="prompt-iteration-empty prompt-iteration-empty--compact">
-          添加 PDF 后，可为每个文件单独设置页码范围。
+          支持 PDF、Excel / CSV、DOCX、常见文本文件与图片；系统会自动识别类型，只有 PDF 会显示页码范围。
         </div>
       ) : (
         <div className="prompt-iteration-file-list">
           {draft.files.map((item) => {
             const pageResult = parsePromptIterationPageSpec(item.pageSpec);
             const attached = hasAttachedFile(item);
+            const fileKind = detectPromptIterationFileKind(item);
+            const fileKindMeta = getFileKindMeta(fileKind);
 
             return (
               <div key={item.id} className="prompt-iteration-file-row">
                 <div className="prompt-iteration-file-topline">
-                  <span className="prompt-iteration-file-name" title={item.name || '未命名 PDF'}>
-                    {item.name || '未命名 PDF'}
+                  <span className="prompt-iteration-file-name" title={item.name || '未命名文件'}>
+                    {item.name || '未命名文件'}
                   </span>
+                  <Badge
+                    variant="light"
+                    color={fileKindMeta.color}
+                    radius="xl"
+                    className="prompt-iteration-file-size"
+                  >
+                    {fileKindMeta.label}
+                  </Badge>
                   <Badge
                     variant="light"
                     color={attached ? 'teal' : 'yellow'}
@@ -217,19 +238,21 @@ export function PromptIterationFileList({ draft, onDraftChange, compact = false 
                   </ActionIcon>
                 </div>
 
-                <TextInput
-                  value={item.pageSpec}
-                  placeholder="全文 / 12 / 12-15 / 12,18"
-                  onChange={(event) => updatePageSpec(item.id, event.currentTarget.value)}
-                  onBlur={() => normalizePageSpec(item)}
-                  error={pageResult.valid ? undefined : pageResult.error}
-                  description={
-                    pageResult.valid && item.pageSpec.trim()
-                      ? `解析后页码：${pageResult.normalized || '全文'}`
-                      : undefined
-                  }
-                  rightSection={<PageSpecHelp />}
-                />
+                {fileKind === 'pdf' ? (
+                  <TextInput
+                    value={item.pageSpec}
+                    placeholder="全文 / 12 / 12-15 / 12,18"
+                    onChange={(event) => updatePageSpec(item.id, event.currentTarget.value)}
+                    onBlur={() => normalizePageSpec(item)}
+                    error={pageResult.valid ? undefined : pageResult.error}
+                    description={
+                      pageResult.valid && item.pageSpec.trim()
+                        ? `解析后页码：${pageResult.normalized || '全文'}`
+                        : undefined
+                    }
+                    rightSection={<PageSpecHelp />}
+                  />
+                ) : null}
               </div>
             );
           })}

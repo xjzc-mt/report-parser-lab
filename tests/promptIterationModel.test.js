@@ -4,6 +4,7 @@ import {
   DRAFT_PROMPT_ASSET_OPTION_VALUE,
   buildPromptAssetSelectOptions,
   buildPromptTextStats,
+  detectPromptIterationFileKind,
   extractJsonCandidate,
   parsePromptIterationPageSpec,
   summarizeParsedJson
@@ -60,6 +61,17 @@ test('buildPromptTextStats 分别统计系统提示词和用户提示词 token',
   assert.equal(stats.user.characters, 11);
   assert.equal(stats.total.characters, 16);
   assert.equal(stats.total.estimatedTokens, stats.system.estimatedTokens + stats.user.estimatedTokens);
+});
+
+test('detectPromptIterationFileKind 按后缀和 MIME 识别 PDF、表格和文本文件', () => {
+  assert.equal(detectPromptIterationFileKind({ name: 'report.pdf', type: 'application/pdf' }), 'pdf');
+  assert.equal(detectPromptIterationFileKind({ name: 'data.xlsx', type: '' }), 'spreadsheet');
+  assert.equal(detectPromptIterationFileKind({ name: 'data.csv', type: 'text/csv' }), 'spreadsheet');
+  assert.equal(detectPromptIterationFileKind({ name: 'brief.docx', type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), 'text');
+  assert.equal(detectPromptIterationFileKind({ name: 'chart.png', type: 'image/png' }), 'image');
+  assert.equal(detectPromptIterationFileKind({ name: 'notes.md', type: 'text/markdown' }), 'text');
+  assert.equal(detectPromptIterationFileKind({ name: 'rules.yaml', type: '' }), 'text');
+  assert.equal(detectPromptIterationFileKind({ name: 'archive.zip', type: 'application/zip' }), 'unsupported');
 });
 
 test('extractJsonCandidate 优先解析完整 JSON，再回退到代码块 JSON', () => {

@@ -3,7 +3,8 @@ import { ActionIcon, Badge, Button, Modal, Select, TextInput, Textarea } from '@
 import { IconArrowsMaximize, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
 import {
   DRAFT_PROMPT_ASSET_OPTION_VALUE,
-  buildPromptTextStats
+  buildPromptTextStats,
+  detectPromptIterationFileKind
 } from '../../utils/promptIterationModel.js';
 
 const PROVIDER_LABELS = {
@@ -17,7 +18,8 @@ export function PromptIterationConfigPanel({
   onDraftChange,
   llmSettings,
   presetName,
-  supportsPdfUpload,
+  requiresPdfUpload = false,
+  supportsPdfUpload = false,
   promptAssetOptions = [],
   promptVersionOptions = [],
   selectedPromptAssetId = '',
@@ -57,6 +59,15 @@ export function PromptIterationConfigPanel({
     !createPromptMode
   );
   const promptAssetValue = selectedPromptAssetId || (hasDraftPromptAsset ? DRAFT_PROMPT_ASSET_OPTION_VALUE : null);
+  const fileKinds = new Set((draft.files || []).map((item) => detectPromptIterationFileKind(item)).filter((kind) => kind !== 'unsupported'));
+  const inputModeLabel = fileKinds.size <= 1
+    ? (
+      fileKinds.has('pdf') ? 'PDF 输入'
+        : fileKinds.has('spreadsheet') ? '表格输入'
+          : fileKinds.has('text') ? '文本输入'
+            : '等待上传'
+    )
+    : '混合输入';
 
   useEffect(() => {
     if (selectedPromptAssetId) {
@@ -294,15 +305,15 @@ export function PromptIterationConfigPanel({
               </Badge>
               <Badge
                 variant="light"
-                color={supportsPdfUpload ? 'teal' : 'red'}
+                color={requiresPdfUpload ? (supportsPdfUpload ? 'teal' : 'red') : 'blue'}
                 radius="xl"
               >
-                {supportsPdfUpload ? 'PDF 直传' : '不支持 PDF'}
+                {requiresPdfUpload ? (supportsPdfUpload ? '多模态直传' : '不支持多模态直传') : inputModeLabel}
               </Badge>
             </div>
-            {!supportsPdfUpload ? (
+            {requiresPdfUpload && !supportsPdfUpload ? (
               <p className="section-caption">
-                当前页面要求 PDF 直传能力，请切换模型预设。
+                当前文件列表中包含 PDF 或图片，请切换到支持多模态直传的模型预设。
               </p>
             ) : null}
             <dl className="prompt-iteration-model-meta">

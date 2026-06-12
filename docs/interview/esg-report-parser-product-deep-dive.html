@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>报告信息提取项目深度说明｜面试复盘版</title>
+  <style>
+    :root {
+      --ink: #111827;
+      --muted: #526173;
+      --subtle: #7b8794;
+      --line: #d9e2ec;
+      --paper: #f7fafc;
+      --card: #ffffff;
+      --blue: #165dff;
+      --blue-2: #0f3f9f;
+      --cyan: #0e7490;
+      --green: #047857;
+      --amber: #b45309;
+      --red: #b91c1c;
+      --red-bg: #fff1f2;
+      --green-bg: #ecfdf5;
+      --blue-bg: #eff6ff;
+      --amber-bg: #fffbeb;
+      --shadow: 0 18px 55px rgba(15, 23, 42, 0.10);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 8% 6%, rgba(22, 93, 255, 0.10), transparent 26rem),
+        radial-gradient(circle at 90% 2%, rgba(14, 116, 144, 0.08), transparent 24rem),
+        linear-gradient(180deg, #fbfdff 0%, #f3f7fb 44%, #edf4f8 100%);
+      color: var(--ink);
+      font-family: "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      line-height: 1.72;
+    }
+
+    a { color: var(--blue-2); text-decoration: none; border-bottom: 1px solid rgba(22, 93, 255, 0.24); }
+    a:hover { border-bottom-color: var(--blue-2); }
+
+    .page {
+      width: min(1180px, calc(100vw - 44px));
+      margin: 0 auto;
+      padding: 34px 0 64px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      min-height: 360px;
+      padding: 46px 50px;
+      border: 1px solid rgba(15, 23, 42, 0.10);
+      border-radius: 30px;
+      background:
+        linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(21, 78, 133, 0.88)),
+        repeating-linear-gradient(90deg, rgba(255,255,255,.04) 0 1px, transparent 1px 24px);
+      color: white;
+      box-shadow: var(--shadow);
+    }
+
+    .hero:after {
+      content: "";
+      position: absolute;
+      width: 520px;
+      height: 520px;
+      right: -190px;
+      top: -170px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.25), transparent 66%);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      padding: 7px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.20);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #bfdbfe;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 22px 0 12px;
+      max-width: 880px;
+      font-size: clamp(34px, 5vw, 58px);
+      line-height: 1.08;
+      letter-spacing: -0.04em;
+    }
+
+    .hero p {
+      max-width: 860px;
+      margin: 0;
+      color: #dbeafe;
+      font-size: 18px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 34px;
+      max-width: 980px;
+    }
+
+    .metric {
+      padding: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 4px;
+      color: #bfd7ff;
+      font-size: 13px;
+    }
+
+    .toc {
+      position: sticky;
+      top: 12px;
+      z-index: 5;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 18px 0 28px;
+      padding: 12px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.86);
+      box-shadow: 0 10px 35px rgba(15, 23, 42, 0.07);
+      backdrop-filter: blur(14px);
+    }
+
+    .toc a {
+      display: inline-flex;
+      padding: 7px 12px;
+      border: 0;
+      border-radius: 999px;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .toc a:hover { background: var(--blue-bg); color: var(--blue-2); }
+
+    section {
+      margin: 26px 0;
+      padding: 30px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 8px 32px rgba(15, 23, 42, 0.06);
+    }
+
+    h2 {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 18px;
+      color: #0f172a;
+      font-size: 27px;
+      line-height: 1.22;
+      letter-spacing: -0.03em;
+    }
+
+    h2 .num {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      min-width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      background: #0f172a;
+      color: white;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    h3 {
+      margin: 18px 0 8px;
+      color: #111827;
+      font-size: 18px;
+      line-height: 1.35;
+    }
+
+    p { margin: 8px 0; color: var(--muted); }
+    ul, ol { margin: 8px 0 8px 20px; padding: 0; color: var(--muted); }
+    li { margin: 5px 0; }
+
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+
+    .box {
+      padding: 18px;
+      border: 1px solid rgba(15, 23, 42, 0.09);
+      border-radius: 18px;
+      background: linear-gradient(180deg, #fff, #f8fbff);
+    }
+
+    .box h3 { margin-top: 0; }
+
+    .callout {
+      margin: 16px 0;
+      padding: 16px 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(22, 93, 255, 0.16);
+      background: var(--blue-bg);
+      color: #1e3a8a;
+    }
+
+    .danger {
+      border-color: rgba(185, 28, 28, 0.24);
+      background: linear-gradient(180deg, var(--red-bg), #fff);
+    }
+
+    .danger h2 .num,
+    .danger .tag.strong { background: var(--red); }
+
+    .danger-item {
+      padding: 16px 18px;
+      border-left: 5px solid var(--red);
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 8px 26px rgba(185, 28, 28, 0.08);
+    }
+
+    .danger-item + .danger-item { margin-top: 12px; }
+    .danger-item strong { color: var(--red); }
+
+    .tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #3730a3;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .tag.green { background: var(--green-bg); color: var(--green); }
+    .tag.amber { background: var(--amber-bg); color: var(--amber); }
+    .tag.red { background: var(--red-bg); color: var(--red); }
+    .tag.gray { background: #f1f5f9; color: #475569; }
+    .tag.strong { background: var(--blue); color: white; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .step {
+      position: relative;
+      min-height: 140px;
+      padding: 16px;
+      border-radius: 18px;
+      background: #0f172a;
+      color: white;
+      overflow: hidden;
+    }
+
+    .step:after {
+      content: "";
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      right: -34px;
+      top: -34px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.22);
+    }
+
+    .step b { display: block; font-size: 16px; margin-bottom: 8px; }
+    .step span { color: #cbd5e1; font-size: 13px; }
+
+    .timeline {
+      position: relative;
+      margin-top: 18px;
+      padding-left: 20px;
+      border-left: 3px solid #dbeafe;
+    }
+
+    .event {
+      position: relative;
+      margin: 0 0 18px;
+      padding: 18px 20px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 18px;
+      background: #fff;
+    }
+
+    .event:before {
+      content: "";
+      position: absolute;
+      left: -31px;
+      top: 22px;
+      width: 16px;
+      height: 16px;
+      border: 4px solid #bfdbfe;
+      border-radius: 999px;
+      background: var(--blue);
+    }
+
+    .mono {
+      display: inline-block;
+      max-width: 100%;
+      padding: 2px 7px;
+      border: 1px solid #dbeafe;
+      border-radius: 7px;
+      background: #f8fbff;
+      color: #0f3f9f;
+      font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      font-size: 0.92em;
+      word-break: break-all;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 4px;
+      overflow: hidden;
+      border-radius: 16px;
+      background: white;
+      box-shadow: 0 0 0 1px var(--line);
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #e5edf5;
+      text-align: left;
+      vertical-align: top;
+      color: #415064;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f1f7ff;
+      color: #0f172a;
+      font-weight: 900;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .script {
+      padding: 18px;
+      border-radius: 18px;
+      background: #0b1220;
+      color: #dbeafe;
+      font-size: 14px;
+    }
+
+    .script p { color: #dbeafe; }
+    .script strong { color: #fff; }
+
+    .footer {
+      color: var(--subtle);
+      text-align: center;
+      font-size: 13px;
+      margin: 34px 0 0;
+    }
+
+    @media (max-width: 980px) {
+      .hero { padding: 34px 28px; }
+      .hero-grid, .grid-2, .grid-3, .flow { grid-template-columns: 1fr; }
+      .toc { position: static; border-radius: 22px; }
+      section { padding: 22px; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .toc { display: none; }
+      .hero, section { box-shadow: none; break-inside: avoid; }
+      a { color: inherit; border-bottom: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <span class="eyebrow">Interview Deep Dive · Report Parser Product</span>
+      <h1>报告信息提取项目深度说明</h1>
+      <p>
+        这份文档聚焦你简历中的主项目：<strong>报告信息提取 / ESG 指标自动抽取生产链路</strong>。
+        LLM Lab 只是后续研发、调试与验收工具；面试主线应讲这个项目如何把“万份非结构化 ESG/PDF 报告”
+        转成可落库、可追溯、可复核的结构化指标数据。
+      </p>
+      <div class="hero-grid">
+        <div class="metric"><strong>万份级</strong><span>年度报告 / ESG 报告批量处理</span></div>
+        <div class="metric"><strong>500+ 指标</strong><span>文字、数值、货币、强度型混合抽取</span></div>
+        <div class="metric"><strong>两阶段</strong><span>章节定位 → 章节切片 → 指标抽取</span></div>
+        <div class="metric"><strong>多模态</strong><span>直接理解 PDF、表格、图示和扫描页</span></div>
+      </div>
+    </header>
+
+    <nav class="toc">
+      <a href="#position">定位</a>
+      <a href="#business">业务问题</a>
+      <a href="#evolution">版本演进</a>
+      <a href="#architecture">架构</a>
+      <a href="#modules">关键模块</a>
+      <a href="#harness">项目内 Harness</a>
+      <a href="#risk">路线校准</a>
+      <a href="#done">已实现</a>
+      <a href="#todo">未做但必要</a>
+      <a href="#interview">面试话术</a>
+    </nav>
+
+    <section id="position">
+      <h2><span class="num">01</span>项目定位：不是一个“PDF 小工具”，而是 ESG 指标生产流水线</h2>
+      <div class="callout">
+        <strong>推荐一句话：</strong>我做的是一个面向 ESG/可持续发展报告的多模态结构化信息提取系统，
+        输入是企业 PDF 报告和指标口径表，输出是带指标编码、年份、数值/文本、单位、证据页码和原始响应的结构化结果，
+        并支持批量任务、章节定位、成本估算、失败重试和后续验收。
+      </div>
+      <div class="grid-3">
+        <div class="box">
+          <h3>目标用户</h3>
+          <ul>
+            <li>ESG 数据生产 / 数据运营团队</li>
+            <li>指标体系维护人员、研究员</li>
+            <li>质检、验收、模型评估人员</li>
+            <li>后续消费数据的产品、风控、投资研究场景</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>核心价值</h3>
+          <ul>
+            <li>把人工阅读报告改成“自动抽取 + 异常复核”</li>
+            <li>把不可追溯的答案变成带页码证据的结构化数据</li>
+            <li>把单次 Prompt 调试变成可批量验证、可复跑的流程</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>不要混淆</h3>
+          <ul>
+            <li><strong>report-parser-product</strong>：简历主项目，负责生产抽取。</li>
+            <li><strong>~/AiProjects/llm-lab</strong>：LLM Lab，是项目外部的验收、调试和 Prompt 迭代工具，不是主项目本身。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="business">
+      <h2><span class="num">02</span>业务问题：ESG 报告抽取为什么难</h2>
+      <div class="grid-2">
+        <div class="box">
+          <h3>输入难</h3>
+          <ul>
+            <li>PDF 版式差异大：双栏、跨页表格、图片、脚注、附录、扫描页混在一起。</li>
+            <li>同一指标在不同公司报告里的写法不一致，指标名、章节名、单位都可能变化。</li>
+            <li>很多关键信息在表格、图例、颜色图块、图片说明里，不是纯正文。</li>
+            <li>页码存在物理页码、PDF 页码、印刷页码不一致的问题。</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>输出难</h3>
+          <ul>
+            <li>结果不是一句摘要，而是多字段结构：code、name、year、value、unit、currency、page 等。</li>
+            <li>同一个指标可能跨年度、多值、多单位，需要拆成多行。</li>
+            <li>“未披露”“不适用”“描述型结果”要和真实空值区分。</li>
+            <li>生产落表要求字段稳定、可追溯、可验收，不允许只给自然语言解释。</li>
+          </ul>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>指标类型</th>
+            <th>典型输出</th>
+            <th>难点</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>文字型</td>
+            <td>政策、技术、管理措施、事件描述</td>
+            <td>需要理解语义边界，避免把相关但不满足定义的内容误提取。</td>
+          </tr>
+          <tr>
+            <td>数值型</td>
+            <td>排放量、消耗量、员工人数、事故数量</td>
+            <td>要处理千分位、中文单位、量纲、年份、合并口径。</td>
+          </tr>
+          <tr>
+            <td>货币型</td>
+            <td>环保投入、研发投入、公益捐赠金额</td>
+            <td>币种、单位、百万/万元换算容易出错。</td>
+          </tr>
+          <tr>
+            <td>强度型</td>
+            <td>单位营收碳排、单位产量耗水</td>
+            <td>分子/分母单位、计算口径和披露原文都要保留。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="evolution">
+      <h2><span class="num">03</span>版本演进：从本地原型到批量生产</h2>
+      <div class="timeline">
+        <div class="event">
+          <h3>阶段 A：浏览器端原型 / 工作台</h3>
+          <p>仓库根目录的 README 对应最早的 Vite + React 本地工具：上传 PDF 和 Excel/CSV 需求表，调用 Gemini，顺序抽取并导出 Excel，同时提供浏览器端 PDF 压缩。</p>
+          <div class="tag-row">
+            <span class="tag">Vite + React</span>
+            <span class="tag">Gemini API</span>
+            <span class="tag">Excel 导出</span>
+            <span class="tag">PDF 压缩</span>
+          </div>
+        </div>
+        <div class="event">
+          <h3>阶段 B：CLI / 单批次抽取器</h3>
+          <p><span class="mono">esg-ind-parser/</span> 下沉为脚本化能力：输入 PDF 和指标需求文件，完成 PDF 准备、指标抽取和 CSV/Excel 结果输出，适合从 UI 原型向自动化迁移。</p>
+        </div>
+        <div class="event">
+          <h3>阶段 C：Fast 生产版</h3>
+          <p><span class="mono">esg_ind_parser_fast</span> 引入 Hive SQL 输入、OSS PDF 下载、异步并发、全局 Gemini semaphore、JDBC 批量写入、原始结果表和接口表双写。</p>
+          <div class="tag-row">
+            <span class="tag green">多 PDF 并发</span>
+            <span class="tag green">单 PDF 内部批次并发</span>
+            <span class="tag amber">限流与重试</span>
+            <span class="tag">结果双写</span>
+          </div>
+        </div>
+        <div class="event">
+          <h3>阶段 D：Vertex Batch 两阶段版</h3>
+          <p><span class="mono">esg_ind_parser_batch_inference</span> 把大规模任务改成 GCS + Vertex Gemini Batch：先做章节定位，再切章节 PDF 做指标抽取，降低单次上下文压力，提升大规模吞吐和成本可控性。</p>
+          <div class="tag-row">
+            <span class="tag strong">Stage1 章节定位</span>
+            <span class="tag strong">Stage2 指标抽取</span>
+            <span class="tag">JSONL 输入输出</span>
+            <span class="tag">GCS</span>
+            <span class="tag">Batch Job</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="architecture">
+      <h2><span class="num">04</span>生产架构：面试时可以这样画</h2>
+      <div class="flow">
+        <div class="step"><b>1. 任务输入</b><span>Hive SQL / 报告清单 / 指标需求表，包含公告 ID、标题、OSS Key、指标定义、Prompt。</span></div>
+        <div class="step"><b>2. 文件准备</b><span>下载 OSS PDF，做压缩、页码标记、元数据读取、必要时栅格化。</span></div>
+        <div class="step"><b>3. 章节定位</b><span>Stage1 用 locator PDF 判断每个指标组所在页码范围。</span></div>
+        <div class="step"><b>4. 指标抽取</b><span>Stage2 基于章节 PDF 与指标 Prompt 调用多模态模型输出 JSON。</span></div>
+        <div class="step"><b>5. 标准化落地</b><span>字段映射、年份拆行、单位处理、原始表 / 接口表双写、Excel 归档。</span></div>
+      </div>
+      <div class="callout">
+        <strong>关键讲法：</strong>不是把 500+ 指标和整份 PDF 一次性塞给模型，而是通过指标分组、章节定位、章节 PDF 切片和批量任务，把一个大问题拆成可控的小任务。
+      </div>
+    </section>
+
+    <section id="modules">
+      <h2><span class="num">05</span>关键模块拆解</h2>
+      <div class="grid-2">
+        <div class="box">
+          <h3>指标需求读取与分组</h3>
+          <p>需求表优先读取 <span class="mono">用户Prompt</span> sheet，核心字段包括 <span class="mono">group</span>、<span class="mono">chapter_description</span>、<span class="mono">indicator_code</span>、<span class="mono">indicator_name</span>、<span class="mono">value_type</span>、<span class="mono">definition</span>、<span class="mono">guidance</span>、<span class="mono">prompt</span>。</p>
+          <ul>
+            <li><span class="mono">group</span> 用于把同类指标合并到章节定位任务。</li>
+            <li>无 group 的指标走全文组，避免漏处理。</li>
+            <li>value_type 会规范化，比如文本型可映射为文字型。</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>Prompt 与结构化输出</h3>
+          <p>系统提示词按指标类型生成不同 JSON schema，模型输出后再做字段兼容映射。</p>
+          <ul>
+            <li><span class="mono">indicator_code</span> 可兼容 code/id 等模型别名。</li>
+            <li><span class="mono">text_value</span>、<span class="mono">num_value</span>、<span class="mono">pdf_numbers</span> 等字段会统一收口。</li>
+            <li>多年度结果拆多行，便于落表和验收。</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>PDF 准备与页码治理</h3>
+          <p>生产版包含 lossless optimization、保守压缩、栅格化、插入页码 marker、metadata、page_count、image_count、章节 PDF 生成等能力。</p>
+          <ul>
+            <li>目标是既控制文件大小，又尽量保留图表和扫描页信息。</li>
+            <li>locator PDF 顶部带 <span class="mono">PHYSICAL_PAGE: N</span>，用于解决页码对齐问题。</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>并发、重试与成本</h3>
+          <p>Fast 版用异步并发和全局 semaphore 控制模型调用；Batch 版使用 Vertex Batch 的异步队列方式，把大规模非实时任务从在线调用中拆出来。</p>
+          <ul>
+            <li>PDF 操作有超时控制，避免坏文件拖垮全任务。</li>
+            <li>模型调用有重试和原始结果保留，方便失败排查。</li>
+            <li>Batch 版本包含成本估算入口，适合大规模任务前做预算。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="harness">
+      <h2><span class="num">06</span>项目内 Harness：让大规模 LLM 抽取可运行、可复跑、可排查</h2>
+      <p>
+        这里的 Harness 不应该指 LLM Lab。原项目本身的 Harness，更准确地说是围绕“批量 LLM 抽取任务”搭建的一套运行框架：
+        它负责把输入数据、PDF 文件、Prompt、模型调用、阶段产物、失败重试、成本估算和落表结果组织起来，让万份报告任务不是一次性的脚本调用，而是可追踪、可复跑、可排查的流水线。
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Harness 能力</th>
+            <th>项目中的体现</th>
+            <th>面试可以强调的价值</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>任务输入封装</td>
+            <td>从 Hive SQL / source.sql 读取报告清单，结合需求表生成结构化任务上下文。</td>
+            <td>把“跑哪些报告、抽哪些指标、用什么口径”从手工参数变成可复用任务定义。</td>
+          </tr>
+          <tr>
+            <td>阶段化运行</td>
+            <td>Stage1 章节定位 JSONL、Stage2 指标抽取 JSONL、locator_pdfs、chapter_pdfs、manifest、summary。</td>
+            <td>把一个超大 LLM 任务拆成可观察的多个阶段，任何阶段失败都能定位和复用中间产物。</td>
+          </tr>
+          <tr>
+            <td>并发与限流</td>
+            <td>Fast 版有多 PDF 并行、单 PDF 内部批次并发、全局 Gemini semaphore；Batch 版改为 Vertex 异步作业。</td>
+            <td>避免单机串行太慢，也避免模型 API 被打爆；吞吐和稳定性都有工程控制点。</td>
+          </tr>
+          <tr>
+            <td>失败恢复与审计</td>
+            <td>保留原始请求、原始响应、输出 JSONL、Excel 归档、双写原始结果表和接口表。</td>
+            <td>不仅能得到最终答案，还能回看模型当时看了什么、答了什么、为什么失败。</td>
+          </tr>
+          <tr>
+            <td>质量验收接口</td>
+            <td>主项目输出标准化结果；LLM Lab 可作为外部验收工具导入结果和测试集做对比。</td>
+            <td>LLM Lab 是验收环节的工具，不是项目内 Harness 本体；它补上“结果好不好”的可视化评测。</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <strong>面试表述：</strong>原项目的 Harness 是批量抽取流水线自身：任务封装、阶段产物、并发限流、重试、manifest、summary、原始响应留存和落表。
+        LLM Lab 只作为后置验收/Prompt 调试工具接入，不要把它说成主项目的 Harness。
+      </div>
+    </section>
+
+    <section id="risk" class="danger">
+      <h2><span class="num">07</span>重点标记：面试项目路线中容易讲偏的地方</h2>
+      <div class="danger-item">
+        <strong>不要把主项目讲成“LLM Lab 提效工具”。</strong>
+        简历项目主线是“报告信息提取生产链路”：PDF 准备、章节定位、指标抽取、结构化落表、批量调度和结果追踪。
+        LLM Lab 是后续用于验收、Prompt 迭代和对比分析的辅助工具，只能作为质量闭环的一环。
+      </div>
+      <div class="danger-item">
+        <strong>不要把模型路线讲成“只有多模态，不需要 RAG/OCR”。</strong>
+        更合理的说法是：当前主链路采用 Gemini/Vertex 多模态，因为 ESG 报告存在表格、图片、扫描页、颜色图例、复杂版式等纯文本链路难覆盖的内容；
+        但长期最佳实践应是混合路由：简单文本型任务可走 OCR/RAG/文本模型，复杂版面和低置信度样本再走强多模态模型。
+      </div>
+      <div class="danger-item">
+        <strong>不要说“把整份报告和 500+ 指标一次性喂给模型”。</strong>
+        当前更正确的流程是指标分组、章节定位、章节 PDF 切片、再分批抽取。这样能降低上下文噪声、控制成本、减少跨章节误匹配，也方便失败重跑。
+      </div>
+      <div class="danger-item">
+        <strong>不要把“页码”讲成天然可靠。</strong>
+        PDF 物理页码、印刷页码和模型返回页码可能不一致，所以项目里做了 locator PDF、PHYSICAL_PAGE 标记和章节切片。
+        面试时应强调页码治理是工程难点，而不是模型随便返回一个页码就能落库。
+      </div>
+      <div class="danger-item">
+        <strong>不要把评测讲成“看几个样例觉得不错”。</strong>
+        原项目本身有原始结果、接口表、Excel 归档和可复跑产物；但严格意义上的自动化 evaluation harness 还不够完整。
+        更稳妥的表述是：项目已经具备结果留存和后置验收基础，后续需要把测试集指标、失败分类、幻觉率、单位错误率等正式纳入流水线。
+      </div>
+      <div class="danger-item">
+        <strong>不要把原型、Fast 版、Batch 版混成同一个实现。</strong>
+        本地 React 工具是原型/调试入口；Fast 版解决并发和落表；Vertex Batch 版解决更大规模的异步批处理。
+        面试时要按演进讲，不要说所有能力一开始就在同一个页面里完成。
+      </div>
+    </section>
+
+    <section id="done">
+      <h2><span class="num">08</span>已经实现的能力：可以作为项目亮点讲</h2>
+      <div class="grid-2">
+        <div class="box">
+          <h3>多模态 PDF 抽取</h3>
+          <p>主链路把 PDF 作为模型输入，而不是只抽纯文本；这样可以覆盖表格、图片、扫描页、颜色图例和复杂版面。</p>
+          <div class="tag-row">
+            <span class="tag green">PDF 原生输入</span>
+            <span class="tag green">图表理解</span>
+            <span class="tag green">页码证据</span>
+          </div>
+        </div>
+        <div class="box">
+          <h3>两阶段批处理</h3>
+          <p>Stage1 章节定位先缩小搜索空间，Stage2 按章节 PDF 做指标抽取，避免把全文与所有指标一次性混在一起。</p>
+          <div class="tag-row">
+            <span class="tag strong">章节定位</span>
+            <span class="tag strong">章节切片</span>
+            <span class="tag strong">Batch JSONL</span>
+          </div>
+        </div>
+        <div class="box">
+          <h3>生产接入能力</h3>
+          <p>已经有 Hive SQL 输入、OSS 下载、GCS 上传、Vertex Batch、JDBC 批量写入和接口表双写的链路。</p>
+        </div>
+        <div class="box">
+          <h3>工程稳定性</h3>
+          <p>包含 PDF 操作超时、模型调用重试、并发控制、文件 manifest、原始结果留存、字段兼容映射等机制。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="todo">
+      <h2><span class="num">09</span>必要但尚未完全做好的方向：面试可作为“下一阶段规划”讲</h2>
+      <p>下面这部分要和“已实现”区分开：它们不是当前已经完整落地的功能，而是把项目从可用升级到更强生产平台的必要方向。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>方向</th>
+            <th>为什么必要</th>
+            <th>建议做法</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>密钥与配置治理</td>
+            <td>本地 service-account / .env 明文不适合生产安全要求。</td>
+            <td>接入 Secret Manager / Vault / IAM Workload Identity，运行时注入，仓库只保留模板。</td>
+          </tr>
+          <tr>
+            <td>统一运行追踪</td>
+            <td>批量任务失败时，需要快速定位是下载、压缩、定位、抽取还是落表出错。</td>
+            <td>给每个 run 建 trace：输入清单、prompt 版本、模型版本、文件 hash、token/cost、失败原因、重试记录。</td>
+          </tr>
+          <tr>
+            <td>正式 Evaluation Harness</td>
+            <td>LLM 抽取不能只靠人工肉眼验收，需要持续量化。</td>
+            <td>把 LLM Lab 的验收逻辑沉淀为 CI/批处理评测：按指标类型输出 precision、recall、幻觉率、单位错误、页码错误。</td>
+          </tr>
+          <tr>
+            <td>模型路由与成本分层</td>
+            <td>全部用强多模态模型成本高，简单页/简单指标不一定需要。</td>
+            <td>用轻模型/OCR/RAG 做候选召回或低风险抽取，复杂图表、扫描页、低置信度样本再走 Gemini Pro/Vertex Batch。</td>
+          </tr>
+          <tr>
+            <td>Schema 强校验</td>
+            <td>模型 JSON 字段可能缺失、类型漂移、单位不规范。</td>
+            <td>引入 JSON Schema / Pydantic 风格校验，失败自动修复或重试，所有落表前统一规范化。</td>
+          </tr>
+          <tr>
+            <td>人工复核闭环</td>
+            <td>ESG 数据最终要可信，低置信度和争议样本需要人工确认。</td>
+            <td>把异常样本、人工修正、Prompt 版本和测试集回流，形成 active learning 数据资产。</td>
+          </tr>
+          <tr>
+            <td>更完整的文档清理</td>
+            <td>旧路径、旧输出格式、旧模式说明会影响交接和面试表述。</td>
+            <td>把 README 分成“原型版 / fast 版 / batch 版”，删除或脱敏旧绝对路径和内部 endpoint。</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <strong>最新技术路径建议：</strong>继续保留多模态 PDF 理解作为复杂报告主链路；同时补一条“低成本文本/OCR/RAG 召回 + 多模态复核”的混合路线，用模型路由把成本和质量平衡起来。
+      </div>
+    </section>
+
+    <section id="interview">
+      <h2><span class="num">10</span>面试话术：从 30 秒到深挖</h2>
+      <div class="grid-2">
+        <div class="script">
+          <h3>30 秒版本</h3>
+          <p>
+            我做的是一个 ESG 报告信息提取系统，输入是企业发布的 PDF 报告和 500 多个指标的需求表，
+            输出是结构化指标数据，包括指标编码、年份、值、单位、证据页码和原始响应。系统从最早的本地 React 工作台，
+            演进到支持 Hive SQL 输入、OSS/GCS 文件准备、Vertex Gemini Batch 两阶段处理的生产链路。
+            核心设计是先做章节定位，再按章节 PDF 做指标抽取，避免全文和所有指标混在一起，提高稳定性和成本可控性。
+          </p>
+        </div>
+        <div class="script">
+          <h3>2 分钟版本</h3>
+          <p>
+            这个项目解决的是 ESG 报告非结构化数据生产问题。报告里很多信息在表格、图片、扫描页和复杂版面里，
+            传统 OCR/RAG 很容易丢掉版式、表格和图例信息，所以主链路采用 Gemini/Vertex 多模态 PDF 输入。
+            工程上我没有把整份报告和 500 多个指标一次性塞给模型，而是把指标按 group 和 value_type 组织，
+            第一阶段用带物理页码标记的 locator PDF 做章节定位，第二阶段切出章节 PDF，再结合对应指标 Prompt 让模型输出 JSON。
+            结果会经过字段映射、年份拆行、单位处理、原始结果保留和 Hive 双写，后续再用 LLM Lab 做测试集验收和 Prompt 迭代。
+          </p>
+        </div>
+      </div>
+      <h3>如果被问“为什么不用 MinerU + RAG + 文本模型？”</h3>
+      <ul>
+        <li><strong>可以用，但不是替代全部链路。</strong> 对纯文本章节、简单指标，OCR/RAG 是很好的低成本候选召回；但 ESG 报告里很多关键证据在表格、图片、扫描页、图例和版式关系里。</li>
+        <li><strong>多模态的必要性来自错误类型。</strong> 如果错误集中在表格结构丢失、颜色图例、跨页表格、图片扫描页、页码错位，那么纯文本链路会天然劣势。</li>
+        <li><strong>最优解是混合路由。</strong> 不是所有任务都用最贵模型，而是简单样本走低成本文本/OCR，复杂样本和低置信度结果走多模态复核。</li>
+      </ul>
+      <h3>如果被问“项目中最工程化的点是什么？”</h3>
+      <p>
+        可以回答：把 LLM 从一次性调用包装成生产流水线。包括输入规范、文件准备、章节定位、章节切片、结构化 schema、重试限流、Batch 异步、落表、原始响应留存、验收和 Prompt 迭代。
+      </p>
+    </section>
+
+    <section id="sources">
+      <h2><span class="num">11</span>资料来源与核对范围</h2>
+      <p>本文件主要基于本地项目 <span class="mono">/Users/michael_drj/Desktop/报告信息提取/report-parser-product</span> 的 README、METHODOLOGY、fast 版和 batch inference 版文档/代码整理。</p>
+      <ul>
+        <li>本地根目录：<span class="mono">README.md</span>、<span class="mono">METHODOLOGY.md</span></li>
+        <li>生产脚本：<span class="mono">esg-ind-parser/README.md</span></li>
+        <li>并发版：<span class="mono">esg_ind_parser_fast/README.md</span>、<span class="mono">pipeline.py</span>、<span class="mono">gemini_client.py</span>、<span class="mono">requirements_io.py</span></li>
+        <li>Batch 版：<span class="mono">esg_ind_parser_batch_inference/README.md</span>、<span class="mono">pipeline.py</span>、<span class="mono">constants.py</span></li>
+        <li>官方技术方向可参考：<a href="https://ai.google.dev/gemini-api/docs/document-processing" target="_blank" rel="noreferrer">Gemini API 文档处理</a>、<a href="https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/batch-prediction-from-cloud-storage" target="_blank" rel="noreferrer">Vertex AI Gemini Batch Prediction</a>。</li>
+      </ul>
+    </section>
+
+    <p class="footer">生成时间：2026-05-14 · 用途：面试复盘 / 项目讲述 / 风险自查</p>
+  </main>
+</body>
+</html>

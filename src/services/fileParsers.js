@@ -26,6 +26,29 @@ export function parseExcel(file) {
   });
 }
 
+export async function parseDocx(file) {
+  const JSZip = (await import('jszip')).default;
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const documentXml = await zip.file('word/document.xml')?.async('string');
+
+  if (!documentXml) {
+    throw new Error('DOCX 文件缺少 word/document.xml，无法解析正文。');
+  }
+
+  const parser = typeof DOMParser !== 'undefined' ? new DOMParser() : null;
+  if (!parser) {
+    throw new Error('当前环境不支持 DOMParser，无法解析 DOCX。');
+  }
+
+  const xml = parser.parseFromString(documentXml, 'application/xml');
+  const paragraphs = Array.from(xml.getElementsByTagName('w:p')).map((paragraph) => {
+    const textNodes = Array.from(paragraph.getElementsByTagName('w:t'));
+    return textNodes.map((node) => node.textContent || '').join('').trim();
+  }).filter(Boolean);
+
+  return paragraphs.join('\n');
+}
+
 export async function parsePDF(file, onProgress) {
   if (!window.pdfjsLib) {
     throw new Error('PDF.js is not loaded.');
