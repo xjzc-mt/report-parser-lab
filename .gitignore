@@ -1,0 +1,57 @@
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# User data & samples
+sample/
+temp/
+out/
+*.log
+
+# Sensitive information
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# 前端依赖与构建产物
+node_modules/
+dist/
+build/
+.cache/
+.parcel-cache/
+
+# PDF/Excel extraction results
+web/extraction_results_*.csv
+extraction_results_*.xlsx
+
+# openspec
+openspec/
+.claude/skills/openspec*
+
+# Superpowers temporary files
+.superpowers/
+.worktrees/
+
+# Process ID files
+*.pid
+
+# 服务端运行时配置（含公司 Key，禁止提交）
+server/data/
+server/data/**
+*.tmp
+
+# 本机代理工具配置
+.claude/
+
+# 本机验收副本、复检证据和迁移备份
+/.local-artifacts/

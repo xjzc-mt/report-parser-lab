@@ -1,0 +1,56 @@
+{
+  "name": "report-parser-lab",
+  "version": "1.0.0",
+  "description": "报告数据提取、结果验收与 Prompt 迭代工作台",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "node --env-file-if-exists=.env --watch server/index.js",
+    "server": "node --env-file-if-exists=.env server/index.js",
+    "start": "npm run build && npm run server",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test",
+    "hash-password": "node server/scripts/hash-password.js"
+  },
+  "keywords": [
+    "document-extraction",
+    "prompt-engineering",
+    "evaluation",
+    "pdf",
+    "self-hosted",
+    "esg"
+  ],
+  "author": "xjzc-mt",
+  "license": "ISC",
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "vite": "^6.4.6"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.91.1",
+    "@mantine/core": "^8.3.18",
+    "@mantine/hooks": "^8.3.18",
+    "@tabler/icons-react": "^3.40.0",
+    "idb": "^8.0.3",
+    "jszip": "^3.10.1",
+    "pako": "^2.1.0",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.5.438",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xjzc-mt/report-parser-lab.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xjzc-mt/report-parser-lab/issues"
+  },
+  "homepage": "https://github.com/xjzc-mt/report-parser-lab#readme",
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

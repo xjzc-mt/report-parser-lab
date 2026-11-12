@@ -1,0 +1,30 @@
+name: 项目验证
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: 测试与构建
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      - name: 配置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: 安装锁定依赖
+        run: npm ci
+      - name: 运行测试
+        run: npm test
+      - name: 构建前端
+        run: npm run build
+      - name: 检查差异格式
+        run: git diff --check
