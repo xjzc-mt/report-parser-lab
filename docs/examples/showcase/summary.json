@@ -1,0 +1,86 @@
+{
+  "dataKind": "synthetic",
+  "description": "虚构报告与人工构造预测；所有统计由项目现用规则计算。两版差异不是实测模型效果。",
+  "reportCount": 3,
+  "indicatorCount": 12,
+  "years": [
+    2024,
+    2025
+  ],
+  "groundTruthCount": 72,
+  "threshold": 70,
+  "versions": {
+    "v1": {
+      "predictionCount": 71,
+      "comparisonRowCount": 79,
+      "testItemCount": 72,
+      "modelOutputCount": 71,
+      "strictPassCount": 42,
+      "lenientPassCount": 46,
+      "hitCount": 64,
+      "duplicateCount": 4,
+      "missCount": 8,
+      "hallucinationCount": 3,
+      "strictPassRate": 0.5833333333333334,
+      "lenientPassRate": 0.6388888888888888,
+      "recall": 0.8888888888888888,
+      "precision": 0.647887323943662,
+      "duplicateRate": 0.05555555555555555,
+      "missRate": 0.1111111111111111,
+      "hallucinationRate": 0.04225352112676056,
+      "averageBestSimilarity": 67,
+      "categoryBreakdown": {
+        "perfect_match": 42,
+        "pass_match": 0,
+        "single_fail": 18,
+        "duplicate_with_pass": 4,
+        "duplicate_without_pass": 0,
+        "miss": 8,
+        "hallucination": 3
+      }
+    },
+    "v2": {
+      "predictionCount": 72,
+      "comparisonRowCount": 74,
+      "testItemCount": 72,
+      "modelOutputCount": 72,
+      "strictPassCount": 65,
+      "lenientPassCount": 66,
+      "hitCount": 70,
+      "duplicateCount": 1,
+      "missCount": 2,
+      "hallucinationCount": 1,
+      "strictPassRate": 0.9027777777777778,
+      "lenientPassRate": 0.9166666666666666,
+      "recall": 0.9722222222222222,
+      "precision": 0.9166666666666666,
+      "duplicateRate": 0.013888888888888888,
+      "missRate": 0.027777777777777776,
+      "hallucinationRate": 0.013888888888888888,
+      "averageBestSimilarity": 92,
+      "categoryBreakdown": {
+        "perfect_match": 65,
+        "pass_match": 0,
+        "single_fail": 4,
+        "duplicate_with_pass": 1,
+        "duplicate_without_pass": 0,
+        "miss": 2,
+        "hallucination": 1
+      }
+    }
+  },
+  "promptAssetImport": {
+    "v1": {
+      "createdCount": 12,
+      "updatedCount": 0,
+      "skippedCount": 0,
+      "invalidCount": 0
+    },
+    "v2": {
+      "createdCount": 0,
+      "updatedCount": 1,
+      "skippedCount": 11,
+      "invalidCount": 0
+    }
+  }
+}
